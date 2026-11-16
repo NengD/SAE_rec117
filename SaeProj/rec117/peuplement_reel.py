@@ -1,4 +1,10 @@
 import datetime
+import html
+import json
+import re
+import time
+import urllib.parse
+import urllib.request
 from django.contrib.auth.models import User
 
 # Remplace 'app' par le nom de ton application Django (ex: 'videos')
@@ -12,9 +18,195 @@ from .models import (
     ProfilUtilisateur,
 )
 
+# ==============================================================================
+# SURCHARGE MANUELLE OPTIONNELLE (si une description n'indique pas la question)
+# Clé : (nom_artiste, ordre) -> Valeur : "Intitulé exact de la question"
+# ==============================================================================
+QUESTIONS_SURCHARGE = {
+    # ("Rivkah", 2): "Quel drôle de festival ?",
+    # ("Rivkah", 4): "Quelle est ta prochaine étape ?",
+}
+
+
+def extraire_youtube_id(url: str) -> str:
+    """Extrait l'identifiant vidéo (11 caractères) depuis une URL youtu.be ou youtube.com."""
+    match = re.search(r"(?:youtu\.be/|v=|/embed/|/shorts/)([0-9A-Za-z_-]{11})", url)
+    return match.group(1) if match else ""
+
+
+def fetch_oembed_youtube(url: str) -> dict:
+    """Interroge l'endpoint oEmbed officiel de YouTube avec l'URL canonique watch?v=ID."""
+    video_id = extraire_youtube_id(url)
+    canonical_url = f"https://www.youtube.com/watch?v={video_id}" if video_id else url
+    encoded_url = urllib.parse.quote(canonical_url, safe="")
+    endpoint = f"https://www.youtube.com/oembed?url={encoded_url}&format=json"
+
+    req = urllib.request.Request(
+        endpoint,
+        headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Accept-Language": "fr-FR,fr;q=0.9",
+            "Cache-Control": "no-cache",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except Exception as e:
+        print(f"  [!] oEmbed YouTube échoué pour {canonical_url} : {e}")
+        return {}
+
+
+def fetch_oembed_vimeo(url: str) -> dict:
+    """Interroge l'endpoint oEmbed officiel de Vimeo."""
+    encoded_url = urllib.parse.quote(url, safe="")
+    endpoint = f"https://vimeo.com/api/oembed.json?url={encoded_url}"
+
+    req = urllib.request.Request(
+        endpoint,
+        headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Accept-Language": "fr-FR,fr;q=0.9",
+            "Cache-Control": "no-cache",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except Exception as e:
+        print(f"  [!] oEmbed Vimeo échoué pour {url} : {e}")
+        return {}
+
+
+def fetch_youtube_description(url: str) -> str:
+    """Récupère la description complète depuis la page YouTube."""
+    video_id = extraire_youtube_id(url)
+    watch_url = f"https://www.youtube.com/watch?v={video_id}" if video_id else url
+
+    req = urllib.request.Request(
+        watch_url,
+        headers={
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+            ),
+            "Accept-Language": "fr-FR,fr;q=0.9",
+            "Cookie": "SOCS=CAESEwgDEgk0ODE3Nzk3MjQaAmZyIAEaBgiA_LyaBg",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=12) as response:
+            page_html = response.read().decode("utf-8", errors="ignore")
+
+        desc_match = re.search(r'"shortDescription"\s*:\s*"((?:[^"\\]|\\.)*)"', page_html)
+        if desc_match:
+            return json.loads(f'"{desc_match.group(1)}"').strip()
+
+        og_desc = re.search(r'<meta property="og:description" content="([^"]*)"', page_html)
+        if og_desc:
+            return html.unescape(og_desc.group(1)).strip()
+    except Exception:
+        pass
+    return ""
+
+
+def nettoyer_libelle_question(texte: str, nom_artiste: str) -> str:
+    """Nettoie un libellé de question et ajoute '?' si nécessaire."""
+    texte = re.sub(rf"(?i)^{re.escape(nom_artiste)}\s*[\-:|/–—]\s*", "", texte).strip()
+    texte = re.sub(
+        r"(?i)^[\s\-:|/–—#]*(?:(?:interview|extrait|question|part|partie)\s*\d+|q\s*\d+|\d+)\s*[\-:|/–—.)]+\s*",
+        "",
+        texte,
+    ).strip(" -:|/–—•*")
+
+    if not texte:
+        return ""
+
+    texte = texte[0].upper() + texte[1:]
+
+    mots_interrogatifs = (
+        "comment", "pourquoi", "quel", "quelle", "quels", "quelles",
+        "qui", "que", "quoi", "où", "quand", "combien", "est-ce"
+    )
+    if not texte.endswith(("?", "!", ".")) and any(
+        re.search(rf"(?i)\b{mot}\b", texte) for mot in mots_interrogatifs
+    ):
+        texte += " ?"
+
+    return texte
+
+
+def extraire_question_extrait(titre: str, description: str, nom_artiste: str, ordre: int) -> str:
+    """
+    Extrait la vraie question de l'extrait :
+    1. Vérifie QUESTIONS_SURCHARGE si défini manuellement.
+    2. Cherche une phrase interrogative ('?') dans la description YouTube ou Vimeo.
+    3. Cherche une ligne spécifique dans la description (hors phrase générique d'intro).
+    4. Fallback sur le titre de la vidéo nettoyé.
+    """
+    if (nom_artiste, ordre) in QUESTIONS_SURCHARGE:
+        return QUESTIONS_SURCHARGE[(nom_artiste, ordre)]
+
+    lignes = [l.strip(" -•*\t") for l in description.splitlines() if l.strip()]
+
+    # 1. Priorité absolue : une ligne contenant un '?' dans la description
+    for ligne in lignes:
+        if "?" in ligne and 8 <= len(ligne) <= 200:
+            return nettoyer_libelle_question(ligne, nom_artiste)
+
+    # 2. Deuxième priorité : une ligne de la description qui n'est pas l'intro générique
+    for ligne in lignes:
+        if (
+            not ligne.lower().startswith("interview de sortie de scène")
+            and not ligne.lower().startswith("http")
+            and 8 <= len(ligne) <= 180
+        ):
+            return nettoyer_libelle_question(ligne, nom_artiste)
+
+    # 3. Fallback sur le titre de la vidéo
+    question_titre = nettoyer_libelle_question(titre, nom_artiste)
+    return question_titre if question_titre else f"{nom_artiste} - Question {ordre}"
+
+
+def parser_date_vimeo(upload_date_str: str) -> datetime.date:
+    if upload_date_str:
+        try:
+            return datetime.datetime.strptime(upload_date_str[:10], "%Y-%m-%d").date()
+        except ValueError:
+            pass
+    return datetime.date(2025, 1, 15)
+
+
+def recuperer_infos_artiste(liste_liens: list[dict], nom_artiste: str):
+    """Récupère les métadonnées YouTube et Vimeo pour chaque extrait."""
+    for item in liste_liens:
+        meta_yt = fetch_oembed_youtube(item["youtube"])
+        meta_vimeo = fetch_oembed_vimeo(item["vimeo"])
+        description_yt = fetch_youtube_description(item["youtube"])
+        time.sleep(0.3)
+
+        titre_yt = (meta_yt.get("title") or "").strip()
+        titre_vimeo = (meta_vimeo.get("title") or "").strip()
+        description_vimeo = (meta_vimeo.get("description") or "").strip()
+
+        titre_final = titre_yt or titre_vimeo or f"{nom_artiste} - Extrait {item['ordre']}"
+        description_finale = description_yt or description_vimeo or ""
+
+        print(f"  [Extrait {item['ordre']}]")
+        print(f"    Titre YT    : {titre_yt}")
+        print(f"    Titre Vimeo : {titre_vimeo}")
+        print(f"    Description : {description_finale!r}")
+
+        item["infos"] = {
+            "titre": titre_final,
+            "description": description_finale,
+            "meta_vimeo": meta_vimeo,
+            "meta_yt": meta_yt,
+        }
+
 
 def run():
-    print("=== Population de la base avec les liens réels (Rivkah & Gontard) ===")
+    print("=== Population de la base via oEmbed (Rivkah & Gontard) ===")
 
     # 1. Nettoyage de la base
     Extrait.objects.all().delete()
@@ -44,136 +236,106 @@ def run():
 
     # 4. Lieu de tournage
     lieu = Lieu.objects.create(
-        nomLieu="Studio d'enregistrement",
-        villeLieu="Orléans",
+        nomLieu="Supersonic Records",
+        villeLieu="Paris",
         paysLieu="France"
     )
 
-    # 5. Questions croisées (communes aux 2 artistes)
-    q1 = Question.objects.create(
-        texteQuestion="Question 1 : Présentation et univers musical"
-    )
-    q2 = Question.objects.create(
-        texteQuestion="Question 2 : Processus de création et écriture"
-    )
-    q3 = Question.objects.create(
-        texteQuestion="Question 3 : Rapport à la scène et au public"
-    )
-    q4 = Question.objects.create(
-        texteQuestion="Question 4 : Projets futurs et mot de la fin"
-    )
+    # 5. Liens vidéos
+    liens_rivkah = [
+        {"ordre": 1, "vimeo": "https://vimeo.com/1128762950", "youtube": "https://youtu.be/1NYQ65FTEC8"},
+        {"ordre": 2, "vimeo": "https://vimeo.com/1128763050", "youtube": "https://youtu.be/ux6ZtL1o0R0"},
+        {"ordre": 3, "vimeo": "https://vimeo.com/1128763155", "youtube": "https://youtu.be/WpFoiw2uP0w"},
+        {"ordre": 4, "vimeo": "https://vimeo.com/1128763765", "youtube": "https://youtu.be/2PDvQ3P8c64"},
+    ]
 
-    print("[4/6] 4 questions croisées créées.")
+    liens_gontard = [
+        {"ordre": 1, "vimeo": "https://vimeo.com/1128786403", "youtube": "https://youtu.be/9eLoUEBF6no"},
+        {"ordre": 2, "vimeo": "https://vimeo.com/1128786928", "youtube": "https://youtu.be/Wt14RXtzZxI"},
+        {"ordre": 3, "vimeo": "https://vimeo.com/1128788337", "youtube": "https://youtu.be/IqLw5KDf9Fg"},
+        {"ordre": 4, "vimeo": "https://vimeo.com/1128790175", "youtube": "https://youtu.be/uwIyaln-k8A"},
+    ]
+
+    print("[4/6] Récupération des métadonnées (YouTube + Vimeo) :")
+    print("--- Rivkah ---")
+    recuperer_infos_artiste(liens_rivkah, "Rivkah")
+    print("--- Gontard ---")
+    recuperer_infos_artiste(liens_gontard, "Gontard")
 
     # 6. Interview Rivkah
+    date_rivkah = parser_date_vimeo(liens_rivkah[0]["infos"]["meta_vimeo"].get("upload_date", ""))
+    auteur_rivkah = (
+        liens_rivkah[0]["infos"]["meta_yt"].get("author_name")
+        or liens_rivkah[0]["infos"]["meta_vimeo"].get("author_name")
+        or "la chaîne officielle"
+    )
     interview_rivkah = Interview.objects.create(
         titreInterview="Interview Rivkah",
-        dateTournage=datetime.date(2025, 1, 15),
-        descriptionInterview="Interview complète de Rivkah décortiquée en 4 extraits.",
+        dateTournage=date_rivkah,
+        descriptionInterview=f"Interview de sortie de scène de Rivkah ({auteur_rivkah}) décortiquée en 4 extraits.",
         artiste=rivkah,
         lieu=lieu,
     )
 
-    extraits_rivkah = [
-        {
-            "titre": "Rivkah - Extrait 1",
-            "ordre": 1,
-            "question": q1,
-            "vimeo": "https://vimeo.com/1128762950",
-            "youtube": "https://youtu.be/1NYQ65FTEC8",
-        },
-        {
-            "titre": "Rivkah - Extrait 2",
-            "ordre": 2,
-            "question": q2,
-            "vimeo": "https://vimeo.com/1128763050",
-            "youtube": "https://youtu.be/ux6ZtL1o0R0",
-        },
-        {
-            "titre": "Rivkah - Extrait 3",
-            "ordre": 3,
-            "question": q3,
-            "vimeo": "https://vimeo.com/1128763155",
-            "youtube": "https://youtu.be/WpFoiw2uP0w",
-        },
-        {
-            "titre": "Rivkah - Extrait 4",
-            "ordre": 4,
-            "question": q4,
-            "vimeo": "https://vimeo.com/1128763765",
-            "youtube": "https://youtu.be/2PDvQ3P8c64",
-        },
-    ]
-
-    for data in extraits_rivkah:
-        Extrait.objects.create(
-            titreExtrait=data["titre"],
-            ordreSequence=data["ordre"],
-            urlVimeo=data["vimeo"],
-            urlYoutube=data["youtube"],
-            transcription=f"Transcription de l'extrait {data['ordre']} de Rivkah.",
-            interview=interview_rivkah,
-            question=data["question"],
+    print("\n--- QUESTIONS RETENUES RIVKAH ---")
+    for item in liens_rivkah:
+        infos = item["infos"]
+        texte_question = extraire_question_extrait(
+            infos["titre"], infos["description"], "Rivkah", item["ordre"]
         )
+        question_obj = Question.objects.create(texteQuestion=texte_question)
+
+        Extrait.objects.create(
+            titreExtrait=infos["titre"],
+            ordreSequence=item["ordre"],
+            urlVimeo=item["vimeo"],
+            urlYoutube=item["youtube"],
+            transcription=infos["description"] or f"Transcription de : {infos['titre']}.",
+            interview=interview_rivkah,
+            question=question_obj,
+        )
+        print(f"  [{item['ordre']}] {infos['titre']}  ==>  Question : {texte_question}")
 
     # 7. Interview Gontard
+    date_gontard = parser_date_vimeo(liens_gontard[0]["infos"]["meta_vimeo"].get("upload_date", ""))
+    auteur_gontard = (
+        liens_gontard[0]["infos"]["meta_yt"].get("author_name")
+        or liens_gontard[0]["infos"]["meta_vimeo"].get("author_name")
+        or "la chaîne officielle"
+    )
     interview_gontard = Interview.objects.create(
         titreInterview="Interview Gontard",
-        dateTournage=datetime.date(2025, 1, 15),
-        descriptionInterview="Interview complète de Gontard décortiquée en 4 extraits.",
+        dateTournage=date_gontard,
+        descriptionInterview=f"Interview de sortie de scène de Gontard ({auteur_gontard}) décortiquée en 4 extraits.",
         artiste=gontard,
         lieu=lieu,
     )
 
-    extraits_gontard = [
-        {
-            "titre": "Gontard - Extrait 1",
-            "ordre": 1,
-            "question": q1,
-            "vimeo": "https://vimeo.com/1128786403",
-            "youtube": "https://youtu.be/9eLoUEBF6no",
-        },
-        {
-            "titre": "Gontard - Extrait 2",
-            "ordre": 2,
-            "question": q2,
-            "vimeo": "https://vimeo.com/1128786928",
-            "youtube": "https://youtu.be/Wt14RXtzZxI",
-        },
-        {
-            "titre": "Gontard - Extrait 3",
-            "ordre": 3,
-            "question": q3,
-            "vimeo": "https://vimeo.com/1128788337",
-            "youtube": "https://youtu.be/IqLw5KDf9Fg",
-        },
-        {
-            "titre": "Gontard - Extrait 4",
-            "ordre": 4,
-            "question": q4,
-            "vimeo": "https://vimeo.com/1128790175",
-            "youtube": "https://youtu.be/uwIyaln-k8A",
-        },
-    ]
-
-    for data in extraits_gontard:
-        Extrait.objects.create(
-            titreExtrait=data["titre"],
-            ordreSequence=data["ordre"],
-            urlVimeo=data["vimeo"],
-            urlYoutube=data["youtube"],
-            transcription=f"Transcription de l'extrait {data['ordre']} de Gontard.",
-            interview=interview_gontard,
-            question=data["question"],
+    print("\n--- QUESTIONS RETENUES GONTARD ---")
+    for item in liens_gontard:
+        infos = item["infos"]
+        texte_question = extraire_question_extrait(
+            infos["titre"], infos["description"], "Gontard", item["ordre"]
         )
+        question_obj = Question.objects.create(texteQuestion=texte_question)
 
-    print("[5/6] 2 interviews et 8 extraits créés.")
+        Extrait.objects.create(
+            titreExtrait=infos["titre"],
+            ordreSequence=item["ordre"],
+            urlVimeo=item["vimeo"],
+            urlYoutube=item["youtube"],
+            transcription=infos["description"] or f"Transcription de : {infos['titre']}.",
+            interview=interview_gontard,
+            question=question_obj,
+        )
+        print(f"  [{item['ordre']}] {infos['titre']}  ==>  Question : {texte_question}")
 
-        # 8. Les 2 profils de base. Ils sont recréés ou remis à jour à chaque peuplement.
+    print("\n[5/6] 2 interviews et 8 extraits créés.")
+
+    # 8. Les 2 profils de base
     profils = [
-        # (identifiant, mot de passe, administrateur ?)
-        ("admin", "rec117", True),             # accès à l'administration du site et à /admin/
-        ("test", "test", False),   # utilisateur simple, sans droits d'administration
+        ("admin", "rec117", True),
+        ("test", "test", False),
     ]
     for identifiant, mot_de_passe, est_admin in profils:
         user, _ = User.objects.get_or_create(username=identifiant)
