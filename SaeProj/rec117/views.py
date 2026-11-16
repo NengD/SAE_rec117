@@ -1,5 +1,22 @@
 from django.views.generic import TemplateView
-from rec117.models import GenreMusical, Artiste, Lieu, Question, Interview, Extrait
+from django.contrib.auth import login
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib.auth.views import LoginView
+from django.shortcuts import redirect, render
+from django.contrib.messages.views import SuccessMessageMixin
+from django.urls import reverse, reverse_lazy
+from django.views.generic import UpdateView
+
+from rec117.forms import InscriptionForm, ProfilUtilisateurForm
+from rec117.models import GenreMusical, Artiste, Lieu, ProfilUtilisateur, Question, Interview, Extrait
+
+
+class ConnexionUtilisateurView(LoginView):
+    template_name = "rec117/administration/connexion_utilisateur.html"
+    redirect_authenticated_user = True
+
+    def get_default_redirect_url(self):
+        return reverse("home")
 
 
 class HomeView(TemplateView):
@@ -40,3 +57,32 @@ class MindMapView(TemplateView):
         context['extraits'] = Extrait.objects.all()
 
         return context
+
+
+class ProfilUtilisateurView(LoginRequiredMixin, UserPassesTestMixin, SuccessMessageMixin, UpdateView):
+    template_name = "rec117/profil.html"
+    model = ProfilUtilisateur
+    form_class = ProfilUtilisateurForm
+    success_url = reverse_lazy("profil")
+    success_message = "Votre lecteur vidéo préféré a été enregistré."
+    login_url = "connexion"
+
+    def get_object(self, queryset=None):
+        profil, _ = ProfilUtilisateur.objects.get_or_create(user=self.request.user)
+        return profil
+
+    def test_func(self):
+        return not self.request.user.is_staff
+
+
+def inscription(request):
+    if request.user.is_authenticated:
+        return redirect('home')
+
+    form = InscriptionForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        utilisateur = form.save()
+        login(request, utilisateur)
+        return redirect('home')
+
+    return render(request, 'rec117/administration/inscription.html', {'form': form})

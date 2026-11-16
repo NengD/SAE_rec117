@@ -3,11 +3,11 @@ import json
 from unittest import mock
 
 from django.contrib.auth.models import User
-from django.test import TestCase, override_settings
+from django.test import TestCase
 from django.urls import reverse
 
 from . import infos_video
-from .models import Artiste, Extrait, GenreMusical, Interview, Question
+from .models import Artiste, Extrait, GenreMusical,Interview, ProfilUtilisateur, Question
 
 
 class AnalyseUrlTests(TestCase):
@@ -76,6 +76,59 @@ class SansReseauTests(TestCase):
         self.assertEqual(infos['miniature'], 'https://i.ytimg.com/vi/1NYQ65FTEC8/hqdefault.jpg')
 
 
+class PageProfilTests(TestCase):
+    def test_profil_demande_une_connexion_utilisateur(self):
+        url = reverse('profil')
+        reponse = self.client.get(url)
+        self.assertRedirects(reponse, f'{reverse("connexion")}?next={url}')
+
+    def test_utilisateur_standard_voit_ses_informations(self):
+        utilisateur = User.objects.create_user(
+            username='visiteur', password='x', email='visiteur@example.com',
+            first_name='Camille', last_name='Martin',
+        )
+        self.client.force_login(utilisateur)
+
+        reponse = self.client.get(reverse('profil'))
+
+        self.assertEqual(reponse.status_code, 200)
+        self.assertContains(reponse, 'visiteur')
+        self.assertContains(reponse, 'Camille Martin')
+        self.assertContains(reponse, 'visiteur@example.com')
+
+    def test_utilisateur_peut_enregistrer_son_lecteur_video_prefere(self):
+        utilisateur = User.objects.create_user('visiteur', password='x')
+        self.client.force_login(utilisateur)
+
+        reponse = self.client.get(reverse('profil'))
+        profil = ProfilUtilisateur.objects.get(user=utilisateur)
+        self.assertEqual(profil.lecteurPrefere, 'YOUTUBE')
+        self.assertContains(reponse, '<option value="YOUTUBE" selected>')
+        self.assertContains(reponse, '<option value="VIMEO">')
+
+        reponse = self.client.post(reverse('profil'), {'lecteurPrefere': 'VIMEO'})
+        self.assertRedirects(reponse, reverse('profil'))
+        profil.refresh_from_db()
+        self.assertEqual(profil.lecteurPrefere, 'VIMEO')
+        self.assertContains(self.client.get(reverse('profil')), '<option value="VIMEO" selected>')
+
+    def test_page_profil_est_reservee_aux_comptes_non_staff(self):
+        staff = User.objects.create_user('chef', password='x', is_staff=True)
+        self.client.force_login(staff)
+
+        self.assertEqual(self.client.get(reverse('profil')).status_code, 403)
+
+    def test_lien_profil_visible_uniquement_aux_utilisateurs_standard(self):
+        url = reverse('profil')
+        utilisateur = User.objects.create_user('visiteur', password='x')
+        self.client.force_login(utilisateur)
+        self.assertContains(self.client.get(reverse('home')), url)
+
+        staff = User.objects.create_user('chef', password='x', is_staff=True)
+        self.client.force_login(staff)
+        self.assertNotContains(self.client.get(reverse('home')), url)
+
+
 @mock.patch.object(infos_video, '_telecharger', side_effect=faux_reseau)
 @mock.patch('rec117.templatetags.videos.miniature_oembed', return_value='')
 class PageAdministrationTests(TestCase):
@@ -101,8 +154,43 @@ class PageAdministrationTests(TestCase):
         self.client.login(username='chef', password='x')
         self.assertEqual(self.client.get(url).status_code, 200)
 
-    def test_bouton_dans_la_barre(self, *_):
-        self.assertContains(self.client.get(reverse('mind_map')), reverse('admin_videos'))
+    def test_bouton_admin_visible_uniquement_au_staff(self, *_):
+        url = reverse('admin_videos')
+        self.assertNotContains(self.client.get(reverse('mind_map')), url)
+        self.client.force_login(User.objects.create_user('visiteur', password='x'))
+        self.assertNotContains(self.client.get(reverse('mind_map')), url)
+        self.client.force_login(self.admin)
+        self.assertContains(self.client.get(reverse('mind_map')), url)
+
+    def test_inscription_cree_un_compte_non_staff(self, *_):
+        from .forms import InscriptionForm
+
+        self.assertEqual(set(InscriptionForm().fields), {'username', 'password1', 'password2'})
+        response = self.client.post(reverse('inscription'), {
+            'username': 'nouveau',
+            'password1': 'MotDePasse-solide-123',
+            'password2': 'MotDePasse-solide-123',
+            'is_staff': 'on',
+            'is_superuser': 'on',
+        })
+        self.assertRedirects(response, reverse('home'))
+        utilisateur = User.objects.get(username='nouveau')
+        self.assertFalse(utilisateur.is_staff)
+        self.assertFalse(utilisateur.is_superuser)
+        self.assertTrue(response.wsgi_request.user.is_authenticated)
+
+    def test_compte_standard_peut_se_connecter_et_se_deconnecter(self, *_):
+        User.objects.create_user('visiteur', password='MotDePasse-solide-123')
+        reponse = self.client.post(reverse('connexion'), {
+            'username': 'visiteur',
+            'password': 'MotDePasse-solide-123',
+        })
+        self.assertRedirects(reponse, reverse('home'))
+        self.assertTrue(self.client.get(reverse('home')).wsgi_request.user.is_authenticated)
+
+        reponse = self.client.post(reverse('deconnexion'))
+        self.assertRedirects(reponse, reverse('home'))
+        self.assertFalse(self.client.get(reverse('home')).wsgi_request.user.is_authenticated)
 
     def test_formulaire_pre_rempli(self, *_):
         self.client.force_login(self.admin)
