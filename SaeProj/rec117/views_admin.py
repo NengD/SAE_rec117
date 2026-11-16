@@ -11,6 +11,7 @@ from django.contrib.auth.decorators import user_passes_test
 from django.contrib.auth.views import LoginView
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 
 from .forms import ConfigurationSiteForm, ExtraitForm, InterviewForm, UrlForm
 from .infos_video import recuperer_infos
@@ -30,15 +31,18 @@ CHAMPS_PRINCIPAUX = {
 
 
 def staff_requis(vue):
-    """Si l'administration n'est pas ouverte à tous, redirige vers la page de connexion
-    les visiteurs qui ne sont pas membres de l'équipe."""
-    vue_protegee = user_passes_test(lambda u: u.is_active and u.is_staff, login_url='admin_connexion')(vue)
+    """Protège les vues selon le réglage d'ouverture de l'administration vidéo."""
+    vue_protegee = user_passes_test(
+        lambda user: user.is_active and user.is_staff,
+        login_url='admin_connexion',
+    )(vue)
 
     @wraps(vue)
     def verifier(request, *args, **kwargs):
         if getattr(settings, 'ADMINISTRATION_OUVERTE', False):
             return vue(request, *args, **kwargs)
         return vue_protegee(request, *args, **kwargs)
+
     return verifier
 
 
@@ -52,6 +56,11 @@ def staff_obligatoire(vue):
 class ConnexionView(LoginView):
     template_name = 'rec117/administration/connexion.html'
     redirect_authenticated_user = False
+
+    def get_success_url(self):
+        if not self.request.user.is_staff:
+            return reverse('home')
+        return super().get_success_url()
 
 
 @staff_requis

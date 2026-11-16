@@ -58,6 +58,12 @@ Le script, à lancer depuis la racine du dépôt :
 Le script peut être relancé autant de fois que voulu : il réutilise le venv et ne touche pas à une base déjà remplie.
 Pour arrêter le site : `Ctrl+C` dans la fenêtre du terminal (ou fermer la fenêtre sous Windows).
 Pour repartir d'une base neuve : supprimer `SaeProj/db.sqlite3` puis relancer le script.
+
+## Comptes utilisateur et administration
+
+Le lien **Créer un compte** permet de créer un compte utilisateur standard ; **Connexion** permet ensuite de se connecter. Ces comptes peuvent regarder les vidéos et n'ont aucun droit d'administration. L'accès à la page d'administration des vidéos et son bouton sont réservés aux comptes staff.
+
+Le lancement crée le compte administrateur initial `admin` (mot de passe initial `rec117`). Changez ce mot de passe avant toute mise en ligne. Pour gérer les utilisateurs ou attribuer les droits staff, connectez-vous à `/admin/` avec un compte administrateur.
  
 Problèmes fréquents :
 - *« Python introuvable »* : installer Python 3.12+ (et sous Windows, cocher « Add to PATH »), puis relancer.
@@ -84,7 +90,12 @@ Puis ouvrir http://127.0.0.1:8000/
  
 Les fois suivantes, il suffit d'activer le venv puis de lancer `python manage.py runserver` depuis `SaeProj/`.
  
-> ⚠️ `peuplement_reel.run()` **vide toute la base** avant de la remplir (2 artistes, 4 questions, 2 interviews, 8 extraits, et un utilisateur `testeur` / `password123`).
+> ⚠️ `peuplement_reel.run()` **vide toute la base** avant de la remplir (2 artistes, 4 questions, 2 interviews, 8 extraits), puis crée les 2 profils de base :
+>
+> | Profil | Identifiant | Mot de passe | Droits |
+> | --- | --- | --- | --- |
+> | Administrateur | `admin` | `rec117` | administration du site et `/admin/` |
+> | Utilisateur simple | `test` | `test` | aucun droit d'administration |
  
 ## Lancer les tests
  

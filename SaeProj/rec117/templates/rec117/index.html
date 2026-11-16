@@ -111,7 +111,7 @@
             <div class="carousel-shell">
                 <button class="carousel-control carousel-control-previous" type="button" aria-label="Voir les extraits précédents">‹</button>
                 <div class="carousel">
-                {% for extrait in derniers_extraits %}
+                {% for extrait in extraits %}
                     {% include 'rec117/partials/carte.html' with interview=extrait.interview type_fiche="extrait" id_fiche=extrait.idExtrait titre=extrait.titreExtrait type="Extrait" video=extrait %}
                 {% endfor %}
                 </div>
@@ -124,7 +124,7 @@
             <div class="carousel-shell">
                 <button class="carousel-control carousel-control-previous" type="button" aria-label="Voir les interviews précédentes">‹</button>
                 <div class="carousel">
-                {% for interview in dernieres_interviews %}
+                {% for interview in interviews %}
                     {% include 'rec117/partials/carte.html' with type_fiche="interview" id_fiche=interview.idInterview titre=interview.titreInterview type="Intégrale" video=interview %}
                 {% endfor %}
                 </div>
