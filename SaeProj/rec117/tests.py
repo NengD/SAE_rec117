@@ -132,7 +132,8 @@ class PageProfilTests(TestCase):
         self.assertEqual(reponse.status_code, 200)
         self.assertContains(reponse, 'visiteur')
         self.assertContains(reponse, 'Camille Martin')
-        self.assertContains(reponse, 'visiteur@example.com')
+        self.assertNotContains(reponse, 'Adresse e-mail')
+        self.assertNotContains(reponse, 'visiteur@example.com')
 
     def test_utilisateur_peut_enregistrer_son_lecteur_video_prefere(self):
         utilisateur = User.objects.create_user('visiteur', password='x')
