@@ -13,6 +13,7 @@ urlpatterns = [
 
     # Administration des vidéos (réservée aux comptes staff)
     path("administration/", views_admin.accueil, name="admin_videos"),
+    path("administration/configuration/", views_admin.configuration, name="admin_configuration"),
     path("administration/connexion/", views_admin.ConnexionView.as_view(), name="admin_connexion"),
     path("administration/deconnexion/", LogoutView.as_view(next_page="home"), name="admin_deconnexion"),
     path("administration/<str:type_video>/ajouter/", views_admin.ajouter, name="admin_ajouter"),

@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.contrib.auth.models import User
 
 
@@ -91,4 +92,20 @@ class ProfilUtilisateur(models.Model):
 
     def __str__(self):
         return f"Profil de {self.user.username}"
+
+
+class ConfigurationSite(models.Model):
+    nombre_videos_carrousel = models.PositiveIntegerField(
+        default=10,
+        validators=[MinValueValidator(1), MaxValueValidator(50)],
+        verbose_name="Nombre de nouveaux extraits",
+        help_text="Nombre de nouveaux extraits affichés dans le carrousel (1 à 50).",
+    )
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return "Configuration du site"
 

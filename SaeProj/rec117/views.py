@@ -1,14 +1,16 @@
-from django.views.generic import TemplateView
 from django.contrib.auth import login
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.views import LoginView
 from django.shortcuts import redirect, render
 from django.contrib.messages.views import SuccessMessageMixin
 from django.urls import reverse, reverse_lazy
-from django.views.generic import UpdateView
+from django.views.generic import TemplateView, UpdateView
 
 from rec117.forms import InscriptionForm, ProfilUtilisateurForm
-from rec117.models import GenreMusical, Artiste, Lieu, ProfilUtilisateur, Question, Interview, Extrait
+from rec117.models import (Artiste, ConfigurationSite, Extrait, GenreMusical, Interview,
+                            Lieu, ProfilUtilisateur, Question)
+
+NB_CONTENUS_RECENTS_PAR_DEFAUT = 10
 
 
 class ConnexionUtilisateurView(LoginView):
@@ -33,6 +35,10 @@ class HomeView(TemplateView):
         # Données pour les carrousels et les fiches de la modale
         context['extraits'] = Extrait.objects.all()
         context['interviews'] = Interview.objects.order_by('idInterview')
+        nombre_videos = ConfigurationSite.objects.values_list('nombre_videos_carrousel', flat=True).first()
+        nombre_videos = nombre_videos or NB_CONTENUS_RECENTS_PAR_DEFAUT
+        context['derniers_extraits'] = Extrait.objects.order_by('-idExtrait')[:nombre_videos]
+        context['dernieres_interviews'] = Interview.objects.order_by('-idInterview')[:nombre_videos]
 
         # Interview à la une : la dernière ajoutée en base
         context['interview_a_la_une'] = Interview.objects.order_by('idInterview').last()

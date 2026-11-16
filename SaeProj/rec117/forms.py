@@ -6,7 +6,8 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.db.models import Max
 
-from .models import Artiste, Extrait, GenreMusical, Interview, Lieu, ProfilUtilisateur, Question
+from .models import (Artiste, ConfigurationSite, Extrait, GenreMusical, Interview, Lieu,
+                     ProfilUtilisateur, Question)
 
 
 class InscriptionForm(UserCreationForm):
@@ -80,6 +81,12 @@ class DateFrancaise(forms.DateInput):
 
     def __init__(self, **kwargs):
         super().__init__(format='%Y-%m-%d', **kwargs)
+
+
+class ConfigurationSiteForm(forms.ModelForm):
+    class Meta:
+        model = ConfigurationSite
+        fields = ['nombre_videos_carrousel']
 
 
 # --- Interview -------------------------------------------------------------------

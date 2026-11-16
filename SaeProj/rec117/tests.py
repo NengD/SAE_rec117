@@ -3,11 +3,11 @@ import json
 from unittest import mock
 
 from django.contrib.auth.models import User
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from . import infos_video
-from .models import Artiste, Extrait, GenreMusical,Interview, ProfilUtilisateur, Question
+from .models import Artiste, ConfigurationSite, Extrait, GenreMusical, Interview, ProfilUtilisateur, Question
 
 
 class AnalyseUrlTests(TestCase):
@@ -76,6 +76,44 @@ class SansReseauTests(TestCase):
         self.assertEqual(infos['miniature'], 'https://i.ytimg.com/vi/1NYQ65FTEC8/hqdefault.jpg')
 
 
+class AccueilNouveautesTests(TestCase):
+    def test_affiche_les_dix_derniers_contenus(self):
+        artiste = Artiste.objects.create(nomArtiste='Rivkah')
+        question = Question.objects.create(texteQuestion='Présentation')
+        interviews = [
+            Interview.objects.create(titreInterview=f'Interview {index}', artiste=artiste)
+            for index in range(12)
+        ]
+        extraits = [
+            Extrait.objects.create(titreExtrait=f'Extrait {index}', ordreSequence=1,
+                                   interview=interview, question=question)
+            for index, interview in enumerate(interviews)
+        ]
+
+        reponse = self.client.get(reverse('home'))
+
+        self.assertEqual(
+            list(reponse.context['dernieres_interviews']),
+            list(reversed(interviews[-10:])),
+        )
+        self.assertEqual(
+            list(reponse.context['derniers_extraits']),
+            list(reversed(extraits[-10:])),
+        )
+
+    def test_seul_un_staff_peut_modifier_la_limite(self):
+        url = reverse('admin_configuration')
+        reponse = self.client.post(url, {'nombre_videos_carrousel': 6})
+
+        self.assertRedirects(reponse, reverse('admin_connexion') + '?next=' + url)
+        self.assertFalse(ConfigurationSite.objects.exists())
+
+        User.objects.create_user('chef', password='x', is_staff=True)
+        self.client.login(username='chef', password='x')
+        reponse = self.client.post(url, {'nombre_videos_carrousel': 6})
+
+        self.assertRedirects(reponse, reverse('admin_videos'))
+        self.assertEqual(ConfigurationSite.objects.get().nombre_videos_carrousel, 6)
 class PageProfilTests(TestCase):
     def test_profil_demande_une_connexion_utilisateur(self):
         url = reverse('profil')
