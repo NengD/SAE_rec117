@@ -106,6 +106,13 @@ Les tests simulent les réponses de YouTube et Vimeo : pas besoin d'Internet.
 
 ---
 
+## Profil
+
+> | Profil | Identifiant | Mot de passe | Droits |
+> | --- | --- | --- | --- |
+> | Administrateur | `admin` | `rec117` | administration du site et `/admin/` |
+> | Utilisateur simple | `test` | `test` | aucun droit d'administration |
+
 ## Pages du site
 
 | URL | Page |
