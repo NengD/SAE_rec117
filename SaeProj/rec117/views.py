@@ -1,5 +1,7 @@
 from django.views.generic import TemplateView
-from rec117.models import GenreMusical, Artiste, Lieu, Question, Interview, Extrait
+from rec117.models import ConfigurationSite, GenreMusical, Artiste, Lieu, Question, Interview, Extrait
+
+NB_CONTENUS_RECENTS_PAR_DEFAUT = 10
 
 
 class HomeView(TemplateView):
@@ -16,6 +18,10 @@ class HomeView(TemplateView):
         # Données pour les carrousels et les fiches de la modale
         context['extraits'] = Extrait.objects.all()
         context['interviews'] = Interview.objects.order_by('idInterview')
+        nombre_videos = ConfigurationSite.objects.values_list('nombre_videos_carrousel', flat=True).first()
+        nombre_videos = nombre_videos or NB_CONTENUS_RECENTS_PAR_DEFAUT
+        context['derniers_extraits'] = Extrait.objects.order_by('-idExtrait')[:nombre_videos]
+        context['dernieres_interviews'] = Interview.objects.order_by('-idInterview')[:nombre_videos]
 
         # Interview à la une : la dernière ajoutée en base
         context['interview_a_la_une'] = Interview.objects.order_by('idInterview').last()

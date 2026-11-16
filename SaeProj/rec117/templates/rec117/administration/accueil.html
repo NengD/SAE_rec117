@@ -5,6 +5,21 @@
 {% block titre_admin %}Administration des vidéos{% endblock %}
 
 {% block admin_contenu %}
+    {% if configuration_form %}
+    <section class="admin-carte" id="reglage-carrousel">
+        <h2>⚙ Réglages de l'accueil</h2>
+        <p class="admin-aide">X = nombre de nouveaux extraits affichés dans le carrousel de la page d'accueil.</p>
+        <form method="post" action="{% url 'admin_configuration' %}" class="admin-url">
+            {% csrf_token %}
+            {{ configuration_form.nombre_videos_carrousel }}
+            <button type="submit" class="btn btn-play">Enregistrer</button>
+        </form>
+        {% if configuration_form.nombre_videos_carrousel.errors %}
+            <p class="admin-erreur">{{ configuration_form.nombre_videos_carrousel.errors|striptags }}</p>
+        {% endif %}
+    </section>
+    {% endif %}
+
     <!-- 1. Ajouter une vidéo à partir de son URL -->
     <section class="admin-carte">
         <h2>➕ Ajouter un extrait</h2>

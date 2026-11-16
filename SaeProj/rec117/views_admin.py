@@ -12,9 +12,9 @@ from django.contrib.auth.views import LoginView
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
-from .forms import ExtraitForm, InterviewForm, UrlForm
+from .forms import ConfigurationSiteForm, ExtraitForm, InterviewForm, UrlForm
 from .infos_video import recuperer_infos
-from .models import Artiste, Extrait, Interview
+from .models import Artiste, ConfigurationSite, Extrait, Interview
 
 # Interview ou Extrait selon le type demandé dans l'URL
 MODELES = {
@@ -42,6 +42,13 @@ def staff_requis(vue):
     return verifier
 
 
+def staff_obligatoire(vue):
+    return user_passes_test(
+        lambda u: u.is_active and u.is_staff,
+        login_url='admin_connexion',
+    )(vue)
+
+
 class ConnexionView(LoginView):
     template_name = 'rec117/administration/connexion.html'
     redirect_authenticated_user = False
@@ -50,12 +57,29 @@ class ConnexionView(LoginView):
 @staff_requis
 def accueil(request):
     """Formulaire d'URL + liste des interviews (chacune avec ses extraits)."""
-    return render(request, 'rec117/administration/accueil.html', {
+    contexte = {
         'form_url': UrlForm(),
         'interviews': Interview.objects.select_related('artiste', 'lieu')
                                        .prefetch_related('extraits__question')
                                        .order_by('artiste__nomArtiste', 'idInterview'),
-    })
+    }
+    if request.user.is_authenticated and request.user.is_staff:
+        contexte['configuration_form'] = ConfigurationSiteForm(
+            instance=ConfigurationSite.objects.first() or ConfigurationSite()
+        )
+    return render(request, 'rec117/administration/accueil.html', contexte)
+
+
+@staff_obligatoire
+def configuration(request):
+    configuration_site = ConfigurationSite.objects.first() or ConfigurationSite()
+    formulaire = ConfigurationSiteForm(request.POST or None, instance=configuration_site)
+    if request.method == 'POST' and formulaire.is_valid():
+        formulaire.save()
+        messages.success(request, 'Le nombre de nouveaux extraits du carrousel a été mis à jour.')
+    elif request.method == 'POST':
+        messages.error(request, 'Le nombre de vidéos du carrousel est invalide.')
+    return redirect('admin_videos')
 
 
 def _page_formulaire(request, form, type_video, **contexte):

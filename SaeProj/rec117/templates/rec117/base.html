@@ -16,6 +16,9 @@
             <a href="{% url 'home' %}" {% if page == 'home' or page == 'home_base' %}class="active"{% endif %}>Mode Lecture</a>
             <a href="{% url 'mind_map' %}" {% if page == 'mind_map' %}class="active"{% endif %}>Mode Carte Mentale</a>
             <a href="{% url 'admin_videos' %}" class="nav-admin{% if 'admin_' in page %} active{% endif %}">⚙ Administration</a>
+            {% if request.user.is_authenticated and request.user.is_staff %}
+            <a href="{% url 'admin_videos' %}#reglage-carrousel">Réglage carrousel</a>
+            {% endif %}
             {% endwith %}
         </nav>
     </header>

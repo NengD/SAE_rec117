@@ -4,7 +4,7 @@ import re
 from django import forms
 from django.db.models import Max
 
-from .models import Artiste, Extrait, GenreMusical, Interview, Lieu, Question
+from .models import Artiste, ConfigurationSite, Extrait, GenreMusical, Interview, Lieu, Question
 
 
 # --- Champ « durée » : accepte 253, 4:13 ou 1:04:13 ---------------------------
@@ -49,6 +49,12 @@ class DateFrancaise(forms.DateInput):
 
     def __init__(self, **kwargs):
         super().__init__(format='%Y-%m-%d', **kwargs)
+
+
+class ConfigurationSiteForm(forms.ModelForm):
+    class Meta:
+        model = ConfigurationSite
+        fields = ['nombre_videos_carrousel']
 
 
 # --- Interview -------------------------------------------------------------------

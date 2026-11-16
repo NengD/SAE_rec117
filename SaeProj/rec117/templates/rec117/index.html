@@ -10,23 +10,36 @@
 {% endblock %}
 
 {% block content %}
-    <!-- Interview à la une -->
-    {% with interview=interview_a_la_une %}
-    <div class="hero" style="background-image: url('{{ interview|miniature_de }}')">
-        <div class="hero-content">
-            <h1 class="hero-title">{{ interview.artiste.nomArtiste }}</h1>
-            <div class="hero-meta">
-                <span>📍 {% include 'rec117/partials/lieu.html' %}</span>
-                <span>{% include 'rec117/partials/genres.html' with artiste=interview.artiste %}</span>
+    <!-- Carrousel des nouveaux extraits -->
+    {% if derniers_extraits %}
+    <section class="hero hero-carousel" aria-label="Nouveaux extraits" data-hero-carousel>
+        {% for extrait in derniers_extraits %}
+        <article class="hero-slide{% if forloop.first %} active{% endif %}" style="background-image: url('{{ extrait|miniature_de }}')" data-hero-slide {% if not forloop.first %}aria-hidden="true"{% endif %}>
+            <div class="hero-content">
+                <h1 class="hero-title">{{ extrait.interview.artiste.nomArtiste }}</h1>
+                <div class="hero-meta">
+                    <span>📍 {% include 'rec117/partials/lieu.html' with interview=extrait.interview %}</span>
+                    <span>{% include 'rec117/partials/genres.html' with artiste=extrait.interview.artiste %}</span>
+                </div>
+                <p class="hero-desc">{{ extrait.titreExtrait }} <strong>Découvrez cet extrait et bifurquez selon vos envies.</strong></p>
+                <div class="hero-buttons">
+                    <button class="btn btn-play" data-fiche="extrait-{{ extrait.idExtrait }}">▶ Lire l'extrait</button>
+                    <button class="btn btn-info" data-fiche="extrait-{{ extrait.idExtrait }}">ℹ Plus d'infos</button>
+                </div>
             </div>
-            <p class="hero-desc">{{ interview.descriptionInterview }} <strong>Lisez la vidéo jusqu'au bout, ou bifurquez selon vos envies.</strong></p>
-            <div class="hero-buttons">
-                <button class="btn btn-play" data-fiche="interview-{{ interview.idInterview }}">▶ Lire la playlist</button>
-                <button class="btn btn-info">ℹ Plus d'infos</button>
+        </article>
+        {% endfor %}
+        <div class="hero-carousel-controls">
+            <button type="button" class="hero-carousel-button" data-hero-previous aria-label="Interview précédente">‹</button>
+            <div class="hero-carousel-dots">
+                {% for extrait in derniers_extraits %}
+                <button type="button" class="hero-carousel-dot{% if forloop.first %} active{% endif %}" data-hero-dot="{{ forloop.counter0 }}" aria-label="Afficher l'extrait {{ forloop.counter }}"></button>
+                {% endfor %}
             </div>
+            <button type="button" class="hero-carousel-button" data-hero-next aria-label="Interview suivante">›</button>
         </div>
-    </div>
-    {% endwith %}
+    </section>
+    {% endif %}
 
     <!-- Barre de filtres -->
     <!-- Barre de filtres (Boutons Pilules avec pastilles de couleurs) -->
@@ -95,19 +108,27 @@
     <main class="content-section">
         <div class="theme-row">
             <div class="row-title">Extraits & Questions spécifiques</div>
-            <div class="carousel">
-                {% for extrait in extraits %}
+            <div class="carousel-shell">
+                <button class="carousel-control carousel-control-previous" type="button" aria-label="Voir les extraits précédents">‹</button>
+                <div class="carousel">
+                {% for extrait in derniers_extraits %}
                     {% include 'rec117/partials/carte.html' with interview=extrait.interview type_fiche="extrait" id_fiche=extrait.idExtrait titre=extrait.titreExtrait type="Extrait" video=extrait %}
                 {% endfor %}
+                </div>
+                <button class="carousel-control carousel-control-next" type="button" aria-label="Voir les extraits suivants">›</button>
             </div>
         </div>
 
         <div class="theme-row">
             <div class="row-title">Interviews Complètes</div>
-            <div class="carousel">
-                {% for interview in interviews %}
+            <div class="carousel-shell">
+                <button class="carousel-control carousel-control-previous" type="button" aria-label="Voir les interviews précédentes">‹</button>
+                <div class="carousel">
+                {% for interview in dernieres_interviews %}
                     {% include 'rec117/partials/carte.html' with type_fiche="interview" id_fiche=interview.idInterview titre=interview.titreInterview type="Intégrale" video=interview %}
                 {% endfor %}
+                </div>
+                <button class="carousel-control carousel-control-next" type="button" aria-label="Voir les interviews suivantes">›</button>
             </div>
         </div>
     </main>
