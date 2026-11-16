@@ -169,14 +169,21 @@ def run():
 
     print("[5/6] 2 interviews et 8 extraits créés.")
 
-    # 8. Création d'un utilisateur de test
-    user, created = User.objects.get_or_create(username="testeur", email="testeur@example.com")
-    if created:
-        user.set_password("password123")
+        # 8. Les 2 profils de base. Ils sont recréés ou remis à jour à chaque peuplement.
+    profils = [
+        # (identifiant, mot de passe, administrateur ?)
+        ("admin", "rec117", True),             # accès à l'administration du site et à /admin/
+        ("test", "test", False),   # utilisateur simple, sans droits d'administration
+    ]
+    for identifiant, mot_de_passe, est_admin in profils:
+        user, _ = User.objects.get_or_create(username=identifiant)
+        user.set_password(mot_de_passe)
+        user.is_staff = est_admin
+        user.is_superuser = est_admin
         user.save()
-        ProfilUtilisateur.objects.create(user=user, lecteurPrefere="YOUTUBE")
+        ProfilUtilisateur.objects.get_or_create(user=user, defaults={"lecteurPrefere": "YOUTUBE"})
 
-    print("[6/6] Utilisateur 'testeur' créé (mot de passe: password123).")
+    print("[6/6] Profils créés : admin / rec117 (administrateur) et test (utilisateur simple).")
     print("=== Base de données peuplée avec succès ! ===")
 
 
