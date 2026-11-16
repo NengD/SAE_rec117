@@ -84,7 +84,12 @@ Puis ouvrir http://127.0.0.1:8000/
  
 Les fois suivantes, il suffit d'activer le venv puis de lancer `python manage.py runserver` depuis `SaeProj/`.
  
-> ⚠️ `peuplement_reel.run()` **vide toute la base** avant de la remplir (2 artistes, 4 questions, 2 interviews, 8 extraits, et un utilisateur `testeur` / `password123`).
+> ⚠️ `peuplement_reel.run()` **vide toute la base** avant de la remplir (2 artistes, 4 questions, 2 interviews, 8 extraits), puis crée les 2 profils de base :
+>
+> | Profil | Identifiant | Mot de passe | Droits |
+> | --- | --- | --- | --- |
+> | Administrateur | `admin` | `rec117` | administration du site et `/admin/` |
+> | Utilisateur simple | `test` | `test` | aucun droit d'administration |
  
 ## Lancer les tests
  
