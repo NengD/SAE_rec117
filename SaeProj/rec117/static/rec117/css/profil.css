@@ -1,0 +1,73 @@
+.profil {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 125px 24px 56px;
+}
+
+.profil-entete {
+    margin-bottom: 30px;
+}
+
+.profil-entete .profil-surtitre {
+    margin-bottom: 8px;
+    color: var(--primary-accent);
+    font-size: 0.85rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.profil-entete h1 {
+    margin: 0 0 10px;
+    font-size: clamp(2rem, 5vw, 3rem);
+}
+
+.profil-entete > p:last-child {
+    color: var(--text-muted);
+}
+
+.profil-carte {
+    padding: 8px 28px;
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+}
+
+.profil-informations {
+    margin: 0;
+}
+
+.profil-information {
+    display: grid;
+    grid-template-columns: minmax(150px, 1fr) 2fr;
+    gap: 20px;
+    padding: 20px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.profil-information:last-child {
+    border-bottom: 0;
+}
+
+.profil-information dt {
+    color: var(--text-muted);
+}
+
+.profil-information dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 600px) {
+    .profil {
+        padding: 135px 18px 40px;
+    }
+
+    .profil-carte {
+        padding: 4px 18px;
+    }
+
+    .profil-information {
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
+}

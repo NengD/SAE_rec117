@@ -76,6 +76,43 @@ class SansReseauTests(TestCase):
         self.assertEqual(infos['miniature'], 'https://i.ytimg.com/vi/1NYQ65FTEC8/hqdefault.jpg')
 
 
+class PageProfilTests(TestCase):
+    def test_profil_demande_une_connexion_utilisateur(self):
+        url = reverse('profil')
+        reponse = self.client.get(url)
+        self.assertRedirects(reponse, f'{reverse("connexion")}?next={url}')
+
+    def test_utilisateur_standard_voit_ses_informations(self):
+        utilisateur = User.objects.create_user(
+            username='visiteur', password='x', email='visiteur@example.com',
+            first_name='Camille', last_name='Martin',
+        )
+        self.client.force_login(utilisateur)
+
+        reponse = self.client.get(reverse('profil'))
+
+        self.assertEqual(reponse.status_code, 200)
+        self.assertContains(reponse, 'visiteur')
+        self.assertContains(reponse, 'Camille Martin')
+        self.assertContains(reponse, 'visiteur@example.com')
+
+    def test_page_profil_est_reservee_aux_comptes_non_staff(self):
+        staff = User.objects.create_user('chef', password='x', is_staff=True)
+        self.client.force_login(staff)
+
+        self.assertEqual(self.client.get(reverse('profil')).status_code, 403)
+
+    def test_lien_profil_visible_uniquement_aux_utilisateurs_standard(self):
+        url = reverse('profil')
+        utilisateur = User.objects.create_user('visiteur', password='x')
+        self.client.force_login(utilisateur)
+        self.assertContains(self.client.get(reverse('home')), url)
+
+        staff = User.objects.create_user('chef', password='x', is_staff=True)
+        self.client.force_login(staff)
+        self.assertNotContains(self.client.get(reverse('home')), url)
+
+
 @mock.patch.object(infos_video, '_telecharger', side_effect=faux_reseau)
 @mock.patch('rec117.templatetags.videos.miniature_oembed', return_value='')
 class PageAdministrationTests(TestCase):

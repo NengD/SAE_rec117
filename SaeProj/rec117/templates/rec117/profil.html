@@ -1,0 +1,41 @@
+{% extends 'rec117/base.html' %}
+{% load static %}
+
+{% block title %}Mon profil{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'rec117/css/profil.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class="profil">
+    <section class="profil-entete">
+        <p class="profil-surtitre">Votre compte rec117</p>
+        <h1>Mon profil</h1>
+        <p>Retrouvez ici les informations associées à votre compte.</p>
+    </section>
+
+    <section class="profil-carte" aria-label="Informations du compte">
+        <dl class="profil-informations">
+            <div class="profil-information">
+                <dt>Nom d'utilisateur</dt>
+                <dd>{{ user.username }}</dd>
+            </div>
+            {% if user.get_full_name %}
+            <div class="profil-information">
+                <dt>Nom complet</dt>
+                <dd>{{ user.get_full_name }}</dd>
+            </div>
+            {% endif %}
+            <div class="profil-information">
+                <dt>Adresse e-mail</dt>
+                <dd>{{ user.email|default:"Non renseignée" }}</dd>
+            </div>
+            <div class="profil-information">
+                <dt>Membre depuis</dt>
+                <dd>{{ user.date_joined|date:"d/m/Y" }}</dd>
+            </div>
+        </dl>
+    </section>
+</main>
+{% endblock %}

@@ -1,5 +1,6 @@
 from django.views.generic import TemplateView
 from django.contrib.auth import login
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.views import LoginView
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -52,6 +53,14 @@ class MindMapView(TemplateView):
         context['extraits'] = Extrait.objects.all()
 
         return context
+
+
+class ProfilUtilisateurView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+    template_name = "rec117/profil.html"
+    login_url = "connexion"
+
+    def test_func(self):
+        return not self.request.user.is_staff
 
 
 def inscription(request):

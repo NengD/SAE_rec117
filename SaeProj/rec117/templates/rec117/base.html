@@ -18,6 +18,8 @@
             {% if user.is_authenticated %}
                 {% if user.is_staff %}
                     <a href="{% url 'admin_videos' %}" class="nav-admin{% if 'admin_' in page %} active{% endif %}">⚙ Administration</a>
+                {% else %}
+                    <a href="{% url 'profil' %}" {% if page == 'profil' %}class="active"{% endif %}>Mon profil</a>
                 {% endif %}
                 <form method="post" action="{% url 'deconnexion' %}" class="nav-session">
                     {% csrf_token %}
