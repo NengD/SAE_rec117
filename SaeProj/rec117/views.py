@@ -3,10 +3,12 @@ from django.contrib.auth import login
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.views import LoginView
 from django.shortcuts import redirect, render
-from django.urls import reverse
+from django.contrib.messages.views import SuccessMessageMixin
+from django.urls import reverse, reverse_lazy
+from django.views.generic import UpdateView
 
-from rec117.forms import InscriptionForm
-from rec117.models import GenreMusical, Artiste, Lieu, Question, Interview, Extrait
+from rec117.forms import InscriptionForm, ProfilUtilisateurForm
+from rec117.models import GenreMusical, Artiste, Lieu, ProfilUtilisateur, Question, Interview, Extrait
 
 
 class ConnexionUtilisateurView(LoginView):
@@ -55,9 +57,17 @@ class MindMapView(TemplateView):
         return context
 
 
-class ProfilUtilisateurView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+class ProfilUtilisateurView(LoginRequiredMixin, UserPassesTestMixin, SuccessMessageMixin, UpdateView):
     template_name = "rec117/profil.html"
+    model = ProfilUtilisateur
+    form_class = ProfilUtilisateurForm
+    success_url = reverse_lazy("profil")
+    success_message = "Votre lecteur vidéo préféré a été enregistré."
     login_url = "connexion"
+
+    def get_object(self, queryset=None):
+        profil, _ = ProfilUtilisateur.objects.get_or_create(user=self.request.user)
+        return profil
 
     def test_func(self):
         return not self.request.user.is_staff

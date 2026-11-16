@@ -37,5 +37,27 @@
             </div>
         </dl>
     </section>
+
+    <section class="profil-carte profil-preferences" aria-labelledby="profil-preferences-titre">
+        <h2 id="profil-preferences-titre">Préférences de lecture</h2>
+        <form method="post" class="profil-preference-form">
+            {% csrf_token %}
+            <div class="profil-preference-champ">
+                <label for="{{ form.lecteurPrefere.id_for_label }}">{{ form.lecteurPrefere.label }}</label>
+                {{ form.lecteurPrefere }}
+                {% for error in form.lecteurPrefere.errors %}
+                    <p class="profil-erreur">{{ error }}</p>
+                {% endfor %}
+            </div>
+            <button type="submit">Enregistrer</button>
+        </form>
+        {% if messages %}
+            <ul class="profil-messages">
+                {% for message in messages %}
+                    <li>{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </section>
 </main>
 {% endblock %}

@@ -7,7 +7,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from . import infos_video
-from .models import Artiste, Extrait, Interview, Question
+from .models import Artiste, Extrait, Interview, ProfilUtilisateur, Question
 
 
 class AnalyseUrlTests(TestCase):
@@ -95,6 +95,22 @@ class PageProfilTests(TestCase):
         self.assertContains(reponse, 'visiteur')
         self.assertContains(reponse, 'Camille Martin')
         self.assertContains(reponse, 'visiteur@example.com')
+
+    def test_utilisateur_peut_enregistrer_son_lecteur_video_prefere(self):
+        utilisateur = User.objects.create_user('visiteur', password='x')
+        self.client.force_login(utilisateur)
+
+        reponse = self.client.get(reverse('profil'))
+        profil = ProfilUtilisateur.objects.get(user=utilisateur)
+        self.assertEqual(profil.lecteurPrefere, 'YOUTUBE')
+        self.assertContains(reponse, '<option value="YOUTUBE" selected>')
+        self.assertContains(reponse, '<option value="VIMEO">')
+
+        reponse = self.client.post(reverse('profil'), {'lecteurPrefere': 'VIMEO'})
+        self.assertRedirects(reponse, reverse('profil'))
+        profil.refresh_from_db()
+        self.assertEqual(profil.lecteurPrefere, 'VIMEO')
+        self.assertContains(self.client.get(reverse('profil')), '<option value="VIMEO" selected>')
 
     def test_page_profil_est_reservee_aux_comptes_non_staff(self):
         staff = User.objects.create_user('chef', password='x', is_staff=True)

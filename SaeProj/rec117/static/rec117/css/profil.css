@@ -57,6 +57,71 @@
     overflow-wrap: anywhere;
 }
 
+.profil-preferences {
+    margin-top: 20px;
+}
+
+.profil-preferences h2 {
+    margin: 20px 0 16px;
+    font-size: 1.25rem;
+}
+
+.profil-preference-form {
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+    padding-bottom: 20px;
+}
+
+.profil-preference-champ {
+    display: grid;
+    flex: 1;
+    gap: 8px;
+}
+
+.profil-preference-champ label {
+    color: var(--text-muted);
+}
+
+.profil-preference-champ select {
+    width: 100%;
+    padding: 11px 12px;
+    color: var(--text-color);
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font: inherit;
+}
+
+.profil-preference-form button {
+    padding: 11px 18px;
+    color: var(--bg-color);
+    background: var(--primary-accent);
+    border: 0;
+    border-radius: 6px;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.profil-preference-form button:hover {
+    filter: brightness(0.9);
+}
+
+.profil-erreur {
+    margin: 0;
+    color: #ff7b7b;
+}
+
+.profil-messages {
+    margin: 0 0 20px;
+    padding: 12px;
+    color: var(--primary-accent);
+    background: var(--bg-color);
+    border-radius: 6px;
+    list-style: none;
+}
+
 @media (max-width: 600px) {
     .profil {
         padding: 135px 18px 40px;
@@ -69,5 +134,10 @@
     .profil-information {
         grid-template-columns: 1fr;
         gap: 6px;
+    }
+
+    .profil-preference-form {
+        align-items: stretch;
+        flex-direction: column;
     }
 }

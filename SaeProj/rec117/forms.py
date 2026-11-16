@@ -6,7 +6,7 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.db.models import Max
 
-from .models import Artiste, Extrait, GenreMusical, Interview, Lieu, Question
+from .models import Artiste, Extrait, GenreMusical, Interview, Lieu, ProfilUtilisateur, Question
 
 
 class InscriptionForm(UserCreationForm):
@@ -29,6 +29,13 @@ class InscriptionForm(UserCreationForm):
     class Meta(UserCreationForm.Meta):
         model = User
         fields = ('username',)
+
+
+class ProfilUtilisateurForm(forms.ModelForm):
+    class Meta:
+        model = ProfilUtilisateur
+        fields = ('lecteurPrefere',)
+        labels = {'lecteurPrefere': 'Lecteur vidéo préféré'}
 
 
 # --- Champ « durée » : accepte 253, 4:13 ou 1:04:13 ---------------------------
