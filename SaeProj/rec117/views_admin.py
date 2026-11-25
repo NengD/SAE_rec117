@@ -9,11 +9,12 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import user_passes_test
 from django.contrib.auth.views import LoginView
+from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
-from .forms import ConfigurationSiteForm, ExtraitForm, InterviewForm, UrlForm
+from .forms import ConfigurationSiteForm, ExtraitForm, InterviewForm, QuestionExtraitFormSet, UrlForm
 from .infos_video import recuperer_infos
 from .models import Artiste, ConfigurationSite, Extrait, Interview
 
@@ -26,7 +27,7 @@ MODELES = {
 # Champs signalés « à remplir » quand ils n'ont pas pu être récupérés depuis l'URL
 CHAMPS_PRINCIPAUX = {
     'interview': {'titreInterview', 'urlMiniature', 'artiste', 'dateTournage', 'lieu', 'descriptionInterview'},
-    'extrait': {'titreExtrait', 'urlMiniature', 'duree', 'interview', 'question', 'transcription'},
+    'extrait': {'titreExtrait', 'urlMiniature', 'duree', 'interview', 'transcription'},
 }
 
 
@@ -69,7 +70,7 @@ def accueil(request):
     contexte = {
         'form_url': UrlForm(),
         'interviews': Interview.objects.select_related('artiste', 'lieu')
-                                       .prefetch_related('extraits__question')
+                                       .prefetch_related('extraits__timecodes__question')
                                        .order_by('artiste__nomArtiste', 'idInterview'),
     }
     if request.user.is_authenticated and request.user.is_staff:
@@ -91,11 +92,38 @@ def configuration(request):
     return redirect('admin_videos')
 
 
-def _page_formulaire(request, form, type_video, **contexte):
+def _formset_questions(type_video, form, donnees=None):
+    """Lignes « question + timecode » d'un extrait. Aucune pour une interview."""
+    if type_video != 'extrait':
+        return None
+    # form.instance est l'extrait (nouveau ou existant) : les lignes lui sont rattachées
+    return QuestionExtraitFormSet(donnees, instance=form.instance, prefix='questions')
+
+
+def _tout_est_valide(form, formset):
+    """Valide le formulaire PUIS les questions (elles ont besoin de la durée lue par le formulaire).
+    Les deux sont toujours validés, pour afficher toutes les erreurs d'un coup."""
+    form_ok = form.is_valid()
+    formset_ok = formset is None or formset.is_valid()
+    return form_ok and formset_ok
+
+
+@transaction.atomic
+def _enregistrer(form, formset):
+    """Enregistre la vidéo, puis ses questions. Tout ou rien grâce à transaction.atomic."""
+    video = form.save()
+    if formset is not None:
+        formset.instance = video
+        formset.save()
+    return video
+
+
+def _page_formulaire(request, form, type_video, formset=None, **contexte):
     """Affiche le formulaire, champs regroupés en blocs (voir l'attribut groupes des formulaires)."""
     contexte.setdefault('auto', set())
     return render(request, 'rec117/administration/formulaire.html', {
         'form': form,
+        'formset': formset,
         'type_video': type_video,
         'groupes': [(titre, [form[nom] for nom in noms]) for titre, noms in form.groupes],
         **contexte,
@@ -162,9 +190,10 @@ def ajouter(request, type_video):
 
     if request.method == 'POST':
         form = Formulaire(request.POST)
+        formset = _formset_questions(type_video, form, request.POST)
         auto = set(request.POST.getlist('_auto'))
-        if form.is_valid():
-            video = form.save()
+        if _tout_est_valide(form, formset):
+            video = _enregistrer(form, formset)
             messages.success(request, f'« {video} » a été ajouté(e).')
             return redirect('admin_videos')
     else:
@@ -180,9 +209,10 @@ def ajouter(request, type_video):
             form = Formulaire(initial=valeurs)
             for video in _doublons(infos['url']):
                 messages.warning(request, f'Attention : cette vidéo est déjà enregistrée (« {video} »).')
+        formset = _formset_questions(type_video, form)
 
     return _page_formulaire(
-        request, form, type_video, infos=infos, auto=auto,
+        request, form, type_video, formset=formset, infos=infos, auto=auto,
         champs_principaux=CHAMPS_PRINCIPAUX[type_video],
         titre_page='Ajouter une interview' if type_video == 'interview' else 'Ajouter un extrait')
 
@@ -194,11 +224,13 @@ def modifier(request, type_video, pk):
     modele, Formulaire, _ = MODELES[type_video]
     video = get_object_or_404(modele, pk=pk)
     form = Formulaire(request.POST or None, instance=video)
-    if request.method == 'POST' and form.is_valid():
-        form.save()
+    formset = _formset_questions(type_video, form, request.POST or None)
+    if request.method == 'POST' and _tout_est_valide(form, formset):
+        _enregistrer(form, formset)
         messages.success(request, f'« {video} » a été modifié(e).')
         return redirect('admin_videos')
-    return _page_formulaire(request, form, type_video, video=video, titre_page=f'Modifier : {video}')
+    return _page_formulaire(request, form, type_video, formset=formset, video=video,
+                            titre_page=f'Modifier : {video}')
 
 
 @staff_requis

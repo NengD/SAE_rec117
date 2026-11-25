@@ -20,30 +20,27 @@
     </section>
     {% endif %}
 
-    <!-- 1. Ajouter une vidéo à partir de son URL -->
+    <!-- 1. Créer une interview : la playlist qui regroupera les extraits -->
+    <section class="admin-carte">
+        <h2>🎬 Créer une interview (playlist)</h2>
+        <p class="admin-aide">Une interview complète n'a pas de vidéo : c'est la playlist de ses extraits.
+            Créez-la ici, puis ajoutez-lui des extraits.</p>
+        <a class="btn btn-play" href="{% url 'admin_ajouter' 'interview' %}">Créer une interview</a>
+    </section>
+
+    <!-- 2. Ajouter un extrait à partir de l'URL de sa vidéo -->
     <section class="admin-carte">
         <h2>➕ Ajouter un extrait</h2>
         <p class="admin-aide">Collez l'adresse d'une vidéo YouTube ou Vimeo : le titre, la miniature, l'auteur, la durée, la description et la date
-            sont récupérés automatiquement quand c'est possible. Vous complétez ensuite le reste à la main.
-            Une interview complète n'a pas de vidéo : c'est la playlist de ses extraits. Créez-la avec « Créer une interview », puis ajoutez-lui des extraits.</p>
+            sont récupérés automatiquement quand c'est possible. Vous complétez ensuite le reste à la main.</p>
         <form method="get" class="admin-url">
             <input type="text" name="url" id="id_url" required
                    placeholder="https://youtu.be/…  ou  https://vimeo.com/…" autofocus>
             <button type="submit" class="btn btn-play" formaction="{% url 'admin_ajouter' 'extrait' %}">Ajouter l'extrait</button>
         </form>
-        <div class="admin-sans-url">
-            <div>
-                <strong>Vous n'avez pas encore le lien ?</strong>
-                <p class="admin-aide admin-aide--petit">Commencez avec un formulaire vide et complétez les informations manuellement.</p>
-            </div>
-            <div class="admin-sans-url__actions">
-                <a class="btn-petit" href="{% url 'admin_ajouter' 'interview' %}">Créer une interview (playlist)</a>
-                <a class="btn-petit" href="{% url 'admin_ajouter' 'extrait' %}">Créer un extrait</a>
-            </div>
-        </div>
     </section>
 
-    <!-- 2. Les interviews. Un clic sur une interview affiche ses extraits (sa playlist) -->
+    <!-- 3. Les interviews. Un clic sur une interview affiche ses extraits (sa playlist) -->
     <section class="admin-carte">
         <h2>🎬 Interviews complètes <span class="admin-compteur">{{ interviews|length }}</span></h2>
         {% if interviews %}
@@ -77,7 +74,7 @@
                             {% if interview.extraits.all %}
                             <table class="admin-tableau admin-tableau--extraits">
                                 <thead>
-                                    <tr><th></th><th>N°</th><th>Titre</th><th>Mise en ligne</th><th>Durée</th><th>Question</th><th>Vidéo</th><th></th></tr>
+                                    <tr><th></th><th>N°</th><th>Titre</th><th>Mise en ligne</th><th>Durée</th><th>Questions</th><th>Vidéo</th><th></th></tr>
                                 </thead>
                                 <tbody>
                                 {% for extrait in interview.extraits.all %}
@@ -87,7 +84,7 @@
                                         <td class="admin-titre">{{ extrait.titreExtrait }}</td>
                                         <td>{{ extrait.dateMiseEnLigne|date:"d/m/Y"|default:"—" }}</td>
                                         <td>{{ extrait.duree|duree|default:"—" }}</td>
-                                        <td class="admin-question">{{ extrait.question.texteQuestion|truncatechars:60 }}</td>
+                                        <td class="admin-question">{% for lien in extrait.timecodes.all %}<span class="admin-timecode">{{ lien.timecode|duree }}</span> {{ lien.question.texteQuestion|truncatechars:50 }}{% if not forloop.last %}<br>{% endif %}{% empty %}—{% endfor %}</td>
                                         <td>{% include 'rec117/administration/plateformes.html' with video=extrait %}</td>
                                         <td class="admin-actions">
                                             <a class="btn-petit" href="{% url 'admin_modifier' 'extrait' extrait.pk %}">✎ Modifier</a>

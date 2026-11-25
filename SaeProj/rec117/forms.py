@@ -7,7 +7,7 @@ from django.contrib.auth.models import User
 from django.db.models import Max
 
 from .models import (Artiste, ConfigurationSite, Extrait, GenreMusical, Interview, Lieu,
-                     ProfilUtilisateur, Question)
+                     ProfilUtilisateur, Question, QuestionExtrait)
 
 
 class InscriptionForm(UserCreationForm):
@@ -190,19 +190,15 @@ class ExtraitForm(forms.ModelForm):
     groupes = [
         ('🎬 La vidéo', ['titreExtrait', 'urlYoutube', 'urlVimeo', 'urlMiniature', 'duree', 'dateMiseEnLigne']),
         ("🔗 Place dans l'interview", ['interview', 'ordreSequence']),
-        ('❓ Question', ['question', 'nouvelle_question']),
         ('📝 Transcription', ['transcription']),
     ]
-    nouvelle_question = forms.CharField(
-        label='… ou nouvelle question', required=False, widget=forms.Textarea(attrs={'rows': 2}),
-        help_text="Remplir seulement si la question n'est pas dans la liste")
+    # Les questions et leurs timecodes ne sont plus ici : voir QuestionExtraitFormSet plus bas
     duree = DureeField(label='Durée', required=False)
 
     class Meta:
         model = Extrait
         fields = ['titreExtrait', 'urlYoutube', 'urlVimeo', 'urlMiniature', 'duree', 'dateMiseEnLigne',
-                  'interview', 'question', 'nouvelle_question', 'ordreSequence',
-                  'transcription']
+                  'interview', 'ordreSequence', 'transcription']
         labels = {
             'titreExtrait': 'Titre',
             'urlYoutube': 'URL YouTube',
@@ -210,7 +206,6 @@ class ExtraitForm(forms.ModelForm):
             'urlMiniature': 'Miniature (URL de l\'image)',
             'dateMiseEnLigne': 'Date de mise en ligne',
             'interview': 'Interview (playlist)',
-            'question': 'Question',
             'ordreSequence': 'N° dans l\'interview',
             'transcription': 'Transcription / description',
         }
@@ -224,15 +219,11 @@ class ExtraitForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['question'].required = False
-        self.fields['question'].empty_label = '— Choisir une question —'
         self.fields['interview'].empty_label = '— Choisir une interview —'
         self.fields['ordreSequence'].required = False
 
     def clean(self):
         donnees = super().clean()
-        if not donnees.get('question') and not donnees.get('nouvelle_question'):
-            self.add_error('question', 'Choisissez une question dans la liste ou écrivez-en une nouvelle.')
         if not donnees.get('urlYoutube') and not donnees.get('urlVimeo'):
             self.add_error('urlYoutube', 'Indiquez au moins une URL YouTube ou Vimeo.')
         interview = donnees.get('interview')
@@ -241,15 +232,102 @@ class ExtraitForm(forms.ModelForm):
             donnees['ordreSequence'] = (autres.aggregate(m=Max('ordreSequence'))['m'] or 0) + 1
         return donnees
 
+
+# --- Questions d'un extrait, avec leur timecode -----------------------------------
+# Un « formset » est une liste de petits formulaires identiques : une ligne par question.
+# Chaque ligne = une question (existante ou nouvelle) + le moment où elle commence dans la vidéo.
+
+class QuestionExtraitForm(forms.ModelForm):
+    # Champ « question » déclaré à la main (pas celui du modèle) pour pouvoir le laisser vide
+    # quand on écrit une nouvelle question à la place.
+    question = forms.ModelChoiceField(
+        label='Question', required=False, queryset=Question.objects.all(),
+        empty_label='— Choisir une question —')
+    nouvelle_question = forms.CharField(
+        label='… ou nouvelle question', required=False, max_length=500,
+        widget=forms.TextInput(attrs={'placeholder': 'Écrire une nouvelle question'}))
+    timecode = DureeField(
+        label='Timecode', required=False,
+        help_text='Moment où la question commence (ex : 1:20). Vide = 0:00',
+        widget=forms.TextInput(attrs={'placeholder': '0:00'}))
+
+    field_order = ['question', 'nouvelle_question', 'timecode']
+
+    class Meta:
+        model = QuestionExtrait
+        fields = ['timecode']  # la question est gérée à la main, voir save()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk:  # modification : on pré-sélectionne la question déjà enregistrée
+            self.initial['question'] = self.instance.question_id
+
+    def clean(self):
+        donnees = super().clean()
+        if donnees.get('DELETE'):
+            return donnees
+        if not donnees.get('question') and not (donnees.get('nouvelle_question') or '').strip():
+            self.add_error('question', 'Choisissez une question ou écrivez-en une nouvelle.')
+        if donnees.get('timecode') is None:
+            donnees['timecode'] = 0
+        return donnees
+
+    def texte_question(self):
+        """Texte de la question de la ligne, en minuscules (pour repérer les doublons)."""
+        nouvelle = (self.cleaned_data.get('nouvelle_question') or '').strip()
+        if nouvelle:
+            return nouvelle.lower()
+        question = self.cleaned_data.get('question')
+        return question.texteQuestion.strip().lower() if question else ''
+
     def save(self, commit=True):
-        extrait = super().save(commit=False)
+        lien = super().save(commit=False)
         texte = (self.cleaned_data.get('nouvelle_question') or '').strip()
         if texte:
-            extrait.question = Question.objects.filter(texteQuestion__iexact=texte).first() \
+            lien.question = Question.objects.filter(texteQuestion__iexact=texte).first() \
                 or Question.objects.create(texteQuestion=texte)
+        else:
+            lien.question = self.cleaned_data['question']
         if commit:
-            extrait.save()
-        return extrait
+            lien.save()
+        return lien
+
+
+class BaseQuestionExtraitFormSet(forms.BaseInlineFormSet):
+    """Vérifications sur l'ensemble des lignes (une ligne seule ne peut pas les faire)."""
+
+    def clean(self):
+        super().clean()
+        if any(self.errors):
+            return
+        duree = self.instance.duree
+        deja_vues = set()
+        nombre = 0
+        for form in self.forms:
+            if not form.has_changed() and not form.instance.pk:
+                continue  # ligne vide laissée telle quelle
+            if form.cleaned_data.get('DELETE'):
+                continue
+            nombre += 1
+            texte = form.texte_question()
+            if texte in deja_vues:
+                form.add_error('question', 'Cette question est déjà dans la liste.')
+            deja_vues.add(texte)
+            timecode = form.cleaned_data.get('timecode') or 0
+            if duree and timecode > duree:
+                form.add_error('timecode', f'Le timecode dépasse la durée de la vidéo ({formater_duree(duree)}).')
+        if nombre == 0:
+            raise forms.ValidationError('Ajoutez au moins une question à cet extrait.')
+
+
+QuestionExtraitFormSet = forms.inlineformset_factory(
+    Extrait, QuestionExtrait,
+    form=QuestionExtraitForm,
+    formset=BaseQuestionExtraitFormSet,
+    fields=['timecode'],
+    extra=1,
+    can_delete=True,
+)
 
 
 # --- Étape 1 : l'URL ---------------------------------------------------------------

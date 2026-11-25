@@ -9,6 +9,7 @@ from .models import (
     Lieu,
     ProfilUtilisateur,
     Question,
+    QuestionExtrait,
 )
 
 # Les vidéos se gèrent surtout depuis la page « Administration » du site (/rec117/administration/).
@@ -23,7 +24,14 @@ class InterviewAdmin(admin.ModelAdmin):
     list_filter = ("artiste", "dateTournage", "dateMiseEnLigne")
 
 
+class QuestionExtraitInline(admin.TabularInline):
+    """Questions d'un extrait (avec leur timecode), modifiables dans la page de l'extrait."""
+    model = QuestionExtrait
+    extra = 1
+
+
 @admin.register(Extrait)
 class ExtraitAdmin(admin.ModelAdmin):
+    inlines = [QuestionExtraitInline]
     list_display = ("titreExtrait", "interview", "ordreSequence", "dateMiseEnLigne")
     list_filter = ("interview__artiste", "dateMiseEnLigne")

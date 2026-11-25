@@ -16,16 +16,32 @@
 
         <div class="modal-layout">
             <div class="modal-desc-box">
+                {# Questions de la vidéo : un clic lance la vidéo au début de la question #}
+                <div class="questions-video">
+                    <h3>Questions de la vidéo</h3>
+                    <ol class="liste-questions">
+                        {% for lien in extrait.timecodes.all %}
+                            <li>
+                                <button class="btn-timecode" data-debut="{{ lien.timecode }}">
+                                    <span class="timecode">{{ lien.timecode|duree }}</span>
+                                    <span>{{ lien.question.texteQuestion }}</span>
+                                </button>
+                            </li>
+                        {% endfor %}
+                    </ol>
+                </div>
                 <p class="modal-desc">{{ extrait.transcription|default:"" }}</p>
                 <div class="related-content">
                     <h3>Livre dont vous êtes le héros</h3>
                     <p class="subtitle">Choisissez votre prochain embranchement :</p>
                     <div class="related-links-container">
-                        {# Bifurcations : la même question posée aux autres artistes, puis l'interview complète #}
-                        {% for autre in extrait.question.extraits.all %}
-                            {% if autre != extrait %}
-                                <button class="btn-related" data-fiche="extrait-{{ autre.idExtrait }}">👤 Même question posée à {{ autre.interview.artiste.nomArtiste }}</button>
-                            {% endif %}
+                        {# Bifurcations : chaque question de la vidéo posée dans une autre vidéo (au bon timecode), puis l'interview complète #}
+                        {% for lien in extrait.timecodes.all %}
+                            {% for autre in lien.question.timecodes.all %}
+                                {% if autre.extrait != extrait %}
+                                    <button class="btn-related" data-fiche="extrait-{{ autre.extrait.idExtrait }}" data-debut="{{ autre.timecode }}">👤 « {{ lien.question.texteQuestion|truncatechars:40 }} » posée à {{ autre.extrait.interview.artiste.nomArtiste }}</button>
+                                {% endif %}
+                            {% endfor %}
                         {% endfor %}
                         <button class="btn-related" data-fiche="interview-{{ interview.idInterview }}">▶️ Voir la playlist de l'interview</button>
                     </div>
@@ -36,7 +52,7 @@
                 <p><strong>Artiste :</strong> {{ interview.artiste.nomArtiste }}</p>
                 <p><strong>Couleur musicale :</strong><br>{% include 'rec117/partials/genres.html' with artiste=interview.artiste %}</p>
                 <p><strong>Type de contenu :</strong> Extrait / Réponse spécifique</p>
-                <p><strong>Question :</strong> {{ extrait.question.texteQuestion }}</p>
+                <p><strong>Questions :</strong> {{ extrait.timecodes.all|length }}</p>
                 <p><strong>Séquence :</strong> n°{{ extrait.ordreSequence }} dans l'interview</p>
                 <p><strong>Tournage :</strong> {{ interview.dateTournage|date:"d/m/Y"|default:"Date non précisée" }}</p>
                 <p><strong>Mise en ligne :</strong> {{ extrait.dateMiseEnLigne|date:"d/m/Y"|default:"Date non précisée" }}</p>

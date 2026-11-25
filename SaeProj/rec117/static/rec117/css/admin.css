@@ -477,7 +477,40 @@ body {
 }
 
 /* --- Téléphone --- */
+/* Lignes « question + timecode » d'un extrait */
+.admin-question-ligne {
+    display: grid;
+    grid-template-columns: 2fr 2fr 1fr 110px;
+    gap: 15px;
+    align-items: start;
+    padding: 12px 0;
+    border-bottom: 1px dashed var(--border-color);
+}
+
+.admin-question-ligne .admin-champ {
+    margin-bottom: 0;
+}
+
+.admin-question-supprimer {
+    align-self: center;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+#questions-ajouter {
+    margin: 12px 0 0;
+    background: transparent;
+    font-family: inherit;
+    cursor: pointer;
+}
+
 @media (max-width: 700px) {
+    .admin-question-ligne { grid-template-columns: 1fr; }
+
     .admin--auth {
         min-height: calc(100vh - 115px);
     }

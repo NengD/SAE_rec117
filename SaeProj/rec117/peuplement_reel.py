@@ -15,6 +15,7 @@ from .models import (
     Question,
     Interview,
     Extrait,
+    QuestionExtrait,
     ProfilUtilisateur,
 )
 
@@ -285,15 +286,16 @@ def run():
         )
         question_obj = Question.objects.create(texteQuestion=texte_question)
 
-        Extrait.objects.create(
+        extrait = Extrait.objects.create(
             titreExtrait=infos["titre"],
             ordreSequence=item["ordre"],
             urlVimeo=item["vimeo"],
             urlYoutube=item["youtube"],
             transcription=infos["description"] or f"Transcription de : {infos['titre']}.",
             interview=interview_rivkah,
-            question=question_obj,
         )
+        # La question de la vidéo, au début (timecode 0) : à affiner ensuite dans l'administration
+        QuestionExtrait.objects.create(extrait=extrait, question=question_obj, timecode=0)
         print(f"  [{item['ordre']}] {infos['titre']}  ==>  Question : {texte_question}")
 
     # 7. Interview Gontard
@@ -319,15 +321,16 @@ def run():
         )
         question_obj = Question.objects.create(texteQuestion=texte_question)
 
-        Extrait.objects.create(
+        extrait = Extrait.objects.create(
             titreExtrait=infos["titre"],
             ordreSequence=item["ordre"],
             urlVimeo=item["vimeo"],
             urlYoutube=item["youtube"],
             transcription=infos["description"] or f"Transcription de : {infos['titre']}.",
             interview=interview_gontard,
-            question=question_obj,
         )
+        # La question de la vidéo, au début (timecode 0) : à affiner ensuite dans l'administration
+        QuestionExtrait.objects.create(extrait=extrait, question=question_obj, timecode=0)
         print(f"  [{item['ordre']}] {infos['titre']}  ==>  Question : {texte_question}")
 
     print("\n[5/6] 2 interviews et 8 extraits créés.")
