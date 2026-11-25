@@ -30,10 +30,15 @@ function fermerModal() {
 }
 
 // Tout élément qui porte data-fiche ouvre la fiche correspondante au clic :
-// cartes, bouton de l'interview à la une, bifurcations, éléments de la carte mentale
+// cartes, bouton de l'interview à la une, bifurcations, éléments de la carte mentale.
+// S'il porte aussi data-debut (bifurcation « même question »), la vidéo démarre à ce timecode.
 document.addEventListener('click', e => {
     const element = e.target.closest('[data-fiche]');
-    if (element) ouvrirFiche(element.dataset.fiche);
+    if (!element) return;
+    ouvrirFiche(element.dataset.fiche);
+    if (element.dataset.debut !== undefined) {
+        lancerExtrait(document.getElementById(`fiche-${element.dataset.fiche}`), element.dataset.debut);
+    }
 });
 
 // Transforme l'adresse d'une vidéo en adresse de lecteur intégrable dans la page
@@ -66,17 +71,31 @@ function afficherLecteur(entete, lecteur, adresse, debut) {
     return iframe;
 }
 
-// Bouton « Lancer la vidéo » d'un extrait : l'adresse et le départ sont dans ses attributs data-*
+// Lance la vidéo d'une fiche d'extrait à partir de debut (en secondes),
+// avec le lecteur choisi dans la liste (l'adresse est dans les attributs data-* du bouton « Lancer »)
+function lancerExtrait(fiche, debut) {
+    const bouton = fiche.querySelector('.btn-lancer');
+    if (!bouton) return; // fiche d'interview : pas de vidéo à elle
+    const lecteur = fiche.querySelector('.choix-lecteur').value; // 'youtube' ou 'vimeo'
+    const adresse = bouton.dataset[lecteur];
+    if (!adresse) {
+        alert(`Pas de vidéo ${lecteur} pour cette fiche.`);
+        return;
+    }
+    afficherLecteur(fiche.querySelector('.modal-header'), lecteur, adresse, debut);
+    // La question en cours est mise en valeur dans la liste
+    fiche.querySelectorAll('.btn-timecode').forEach(b => b.classList.toggle('actif', b.dataset.debut === String(debut)));
+    fiche.querySelector('.modal-header').scrollIntoView({ behavior: 'smooth' });
+}
+
+// Bouton « Lancer la vidéo » d'un extrait : depuis le début
 modal.querySelectorAll('.btn-lancer').forEach(bouton => {
-    bouton.addEventListener('click', () => {
-        const lecteur = bouton.parentElement.querySelector('.choix-lecteur').value; // 'youtube' ou 'vimeo'
-        const adresse = bouton.dataset[lecteur];
-        if (!adresse) {
-            alert(`Pas de vidéo ${lecteur} pour cette fiche.`);
-            return;
-        }
-        afficherLecteur(bouton.closest('.modal-header'), lecteur, adresse, bouton.dataset.debut);
-    });
+    bouton.addEventListener('click', () => lancerExtrait(bouton.closest('.fiche'), bouton.dataset.debut));
+});
+
+// Questions de la vidéo : un clic relance la vidéo au timecode de la question
+modal.querySelectorAll('.btn-timecode').forEach(bouton => {
+    bouton.addEventListener('click', () => lancerExtrait(bouton.closest('.fiche'), bouton.dataset.debut));
 });
 
 // === Playlist d'une interview complète ===

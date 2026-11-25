@@ -71,14 +71,29 @@ class Extrait(models.Model):
     transcription = models.TextField(blank=True, null=True, help_text="Retranscription pour la recherche")
 
     interview = models.ForeignKey(Interview, on_delete=models.CASCADE, related_name="extraits")
-    question = models.ForeignKey(Question, on_delete=models.PROTECT, related_name="extraits")
+    questions = models.ManyToManyField(Question, through="QuestionExtrait", related_name="extraits")
 
     class Meta:
         ordering = ["ordreSequence"]
         unique_together = ("interview", "ordreSequence")
 
     def __str__(self):
-        return f"{self.interview.artiste.nomArtiste} - Q: {self.question.texteQuestion[:30]}"
+        return f"{self.interview.artiste.nomArtiste} - {self.titreExtrait[:40]}"
+
+
+class QuestionExtrait(models.Model):
+    """Une question posée dans un extrait, et le moment de la vidéo où elle commence."""
+    idQuestionExtrait = models.AutoField(primary_key=True)
+    extrait = models.ForeignKey(Extrait, on_delete=models.CASCADE, related_name="timecodes")
+    question = models.ForeignKey(Question, on_delete=models.PROTECT, related_name="timecodes")
+    timecode = models.PositiveIntegerField(default=0, help_text="Début de la question dans la vidéo, en secondes")
+
+    class Meta:
+        ordering = ["timecode"]
+        unique_together = ("extrait", "question")
+
+    def __str__(self):
+        return f"{self.extrait.titreExtrait} - {self.timecode} s - {self.question}"
 
 
 class ProfilUtilisateur(models.Model):
@@ -108,4 +123,3 @@ class ConfigurationSite(models.Model):
 
     def __str__(self):
         return "Configuration du site"
-

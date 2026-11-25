@@ -34,7 +34,7 @@
                             <li class="playlist-item" data-youtube="{{ extrait.urlYoutube|default:'' }}" data-vimeo="{{ extrait.urlVimeo|default:'' }}">
                                 <button class="playlist-lire">
                                     <span class="playlist-numero">{{ extrait.ordreSequence }}</span>
-                                    <span class="playlist-titre">{{ extrait.titreExtrait }}<small>{% if extrait.duree %}{{ extrait.duree|duree }} · {% endif %}{{ extrait.question.texteQuestion }}</small></span>
+                                    <span class="playlist-titre">{{ extrait.titreExtrait }}<small>{% if extrait.duree %}{{ extrait.duree|duree }} · {% endif %}{% for lien in extrait.timecodes.all %}{{ lien.question.texteQuestion }}{% if not forloop.last %} / {% endif %}{% endfor %}</small></span>
                                 </button>
                                 <button class="btn-related playlist-fiche" data-fiche="extrait-{{ extrait.idExtrait }}">🔗 Fiche</button>
                             </li>

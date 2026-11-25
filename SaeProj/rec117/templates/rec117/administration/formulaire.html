@@ -60,6 +60,29 @@
         </fieldset>
         {% endfor %}
 
+        {% if formset %}
+        {# Extrait seulement : ses questions, chacune avec le moment où elle commence dans la vidéo #}
+        <fieldset class="admin-groupe">
+            <legend>❓ Questions et timecodes</legend>
+            <p class="admin-aide">Une ligne par question posée dans la vidéo, avec le moment où elle commence
+                (ex : 1:20). Sur le site, un clic sur la question lance la vidéo à ce moment-là.</p>
+            {{ formset.management_form }}
+            {% for erreur in formset.non_form_errors %}
+                <div class="admin-message admin-message--error">{{ erreur }}</div>
+            {% endfor %}
+            <div id="questions-lignes">
+                {% for ligne in formset %}
+                    {% include 'rec117/administration/ligne_question.html' %}
+                {% endfor %}
+            </div>
+            {# Modèle d'une ligne vide, copié par le bouton « Ajouter une question » #}
+            <template id="questions-modele">
+                {% include 'rec117/administration/ligne_question.html' with ligne=formset.empty_form %}
+            </template>
+            <button type="button" class="btn-petit" id="questions-ajouter">➕ Ajouter une question</button>
+        </fieldset>
+        {% endif %}
+
         <div class="admin-boutons">
             <button type="submit" class="btn btn-play">💾 Enregistrer</button>
             <a class="btn btn-info" href="{% url 'admin_videos' %}">Annuler</a>
@@ -78,6 +101,17 @@ if (champMiniature && apercu) {
         apercu.hidden = !champMiniature.value.trim();
     });
     apercu.addEventListener('error', () => { apercu.hidden = true; });
+}
+
+const boutonAjouter = document.getElementById('questions-ajouter');
+if (boutonAjouter) {
+    boutonAjouter.addEventListener('click', () => {
+        const total = document.getElementById('id_questions-TOTAL_FORMS');
+        const modele = document.getElementById('questions-modele').innerHTML;
+        document.getElementById('questions-lignes')
+            .insertAdjacentHTML('beforeend', modele.replaceAll('__prefix__', total.value));
+        total.value = Number(total.value) + 1;
+    });
 }
 </script>
 {% endblock %}

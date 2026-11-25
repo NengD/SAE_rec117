@@ -1,0 +1,16 @@
+{# Une ligne du tableau « Questions et timecodes » d'un extrait. Reçoit ligne (un formulaire du formset) #}
+<div class="admin-question-ligne">
+    {% for cache in ligne.hidden_fields %}{{ cache }}{% endfor %}{# identifiants cachés de la ligne #}
+    {% for champ in ligne.visible_fields %}
+        {% if champ.name == 'DELETE' %}
+            {# Case « Supprimer » : seulement pour une question déjà enregistrée #}
+            {% if ligne.instance.pk %}<label class="admin-question-supprimer">{{ champ }} Supprimer</label>{% endif %}
+        {% else %}
+            <div class="admin-champ{% if champ.errors %} admin-champ--erreur{% endif %}">
+                <label for="{{ champ.id_for_label }}">{{ champ.label }}</label>
+                {{ champ }}
+                {% for erreur in champ.errors %}<small class="admin-erreur">{{ erreur }}</small>{% endfor %}
+            </div>
+        {% endif %}
+    {% endfor %}
+</div>
