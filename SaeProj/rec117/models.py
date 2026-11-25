@@ -1,6 +1,7 @@
 from django.db import models
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.contrib.auth.models import User
+from django.utils import timezone
 
 
 class GenreMusical(models.Model):
@@ -44,6 +45,7 @@ class Interview(models.Model):
     idInterview = models.AutoField(primary_key=True)
     titreInterview = models.CharField(max_length=200)
     dateTournage = models.DateField(null=True, blank=True)
+    dateMiseEnLigne = models.DateField(default=timezone.now)
     descriptionInterview = models.TextField(blank=True, null=True)
     # Une interview complète n'a plus de vidéo : c'est la playlist de ses extraits (voir Extrait.interview)
     urlMiniature = models.URLField(max_length=500, blank=True, null=True, help_text="Image d'aperçu (récupérée automatiquement depuis YouTube ou Vimeo)")
@@ -65,6 +67,7 @@ class Extrait(models.Model):
     titreExtrait = models.CharField(max_length=200)
     ordreSequence = models.PositiveIntegerField(help_text="Ordre dans l'interview")
     duree = models.PositiveIntegerField(null=True, blank=True, help_text="En secondes")
+    dateMiseEnLigne = models.DateField(default=timezone.now)
     urlYoutube = models.URLField(blank=True, null=True)
     urlVimeo = models.URLField(blank=True, null=True)
     urlMiniature = models.URLField(max_length=500, blank=True, null=True, help_text="Image d'aperçu (récupérée automatiquement depuis YouTube ou Vimeo)")

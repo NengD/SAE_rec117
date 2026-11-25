@@ -96,7 +96,7 @@ class InterviewForm(forms.ModelForm):
     groupes = [
         ('🎬 La playlist', ['titreInterview', 'urlMiniature']),
         ('🎤 Artiste', ['artiste', 'nouvel_artiste', 'genres_nouvel_artiste', 'nouveau_genre', 'couleur_nouveau_genre']),
-        ('📍 Tournage', ['dateTournage', 'lieu', 'nouveau_lieu', 'ville_nouveau_lieu', 'pays_nouveau_lieu']),
+        ('📍 Tournage', ['dateTournage', 'dateMiseEnLigne', 'lieu', 'nouveau_lieu', 'ville_nouveau_lieu', 'pays_nouveau_lieu']),
         ('📝 Description', ['descriptionInterview']),
     ]
     # Créer un artiste ou un lieu directement depuis le formulaire
@@ -121,18 +121,20 @@ class InterviewForm(forms.ModelForm):
         model = Interview
         fields = ['titreInterview', 'urlMiniature',
                   'artiste', 'nouvel_artiste', 'genres_nouvel_artiste', 'nouveau_genre', 'couleur_nouveau_genre',
-                  'dateTournage', 'lieu', 'nouveau_lieu', 'ville_nouveau_lieu', 'pays_nouveau_lieu',
+                  'dateTournage', 'dateMiseEnLigne', 'lieu', 'nouveau_lieu', 'ville_nouveau_lieu', 'pays_nouveau_lieu',
                   'descriptionInterview']
         labels = {
             'titreInterview': 'Titre',
             'urlMiniature': 'Miniature (URL de l\'image)',
             'artiste': 'Artiste',
             'dateTournage': 'Date de tournage',
+            'dateMiseEnLigne': 'Date de mise en ligne',
             'lieu': 'Lieu',
             'descriptionInterview': 'Description',
         }
         widgets = {
             'dateTournage': DateFrancaise(),
+            'dateMiseEnLigne': DateFrancaise(),
             'descriptionInterview': forms.Textarea(attrs={'rows': 5}),
         }
 
@@ -186,7 +188,7 @@ class InterviewForm(forms.ModelForm):
 
 class ExtraitForm(forms.ModelForm):
     groupes = [
-        ('🎬 La vidéo', ['titreExtrait', 'urlYoutube', 'urlVimeo', 'urlMiniature', 'duree']),
+        ('🎬 La vidéo', ['titreExtrait', 'urlYoutube', 'urlVimeo', 'urlMiniature', 'duree', 'dateMiseEnLigne']),
         ("🔗 Place dans l'interview", ['interview', 'ordreSequence']),
         ('📝 Transcription', ['transcription']),
     ]
@@ -195,13 +197,14 @@ class ExtraitForm(forms.ModelForm):
 
     class Meta:
         model = Extrait
-        fields = ['titreExtrait', 'urlYoutube', 'urlVimeo', 'urlMiniature', 'duree',
+        fields = ['titreExtrait', 'urlYoutube', 'urlVimeo', 'urlMiniature', 'duree', 'dateMiseEnLigne',
                   'interview', 'ordreSequence', 'transcription']
         labels = {
             'titreExtrait': 'Titre',
             'urlYoutube': 'URL YouTube',
             'urlVimeo': 'URL Vimeo',
             'urlMiniature': 'Miniature (URL de l\'image)',
+            'dateMiseEnLigne': 'Date de mise en ligne',
             'interview': 'Interview (playlist)',
             'ordreSequence': 'N° dans l\'interview',
             'transcription': 'Transcription / description',
@@ -209,7 +212,10 @@ class ExtraitForm(forms.ModelForm):
         help_texts = {
             'ordreSequence': 'Laisser vide pour le mettre à la suite des autres extraits',
         }
-        widgets = {'transcription': forms.Textarea(attrs={'rows': 5})}
+        widgets = {
+            'dateMiseEnLigne': DateFrancaise(),
+            'transcription': forms.Textarea(attrs={'rows': 5}),
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

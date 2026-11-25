@@ -54,6 +54,8 @@
                 <p><strong>Type de contenu :</strong> Extrait / Réponse spécifique</p>
                 <p><strong>Questions :</strong> {{ extrait.timecodes.all|length }}</p>
                 <p><strong>Séquence :</strong> n°{{ extrait.ordreSequence }} dans l'interview</p>
+                <p><strong>Tournage :</strong> {{ interview.dateTournage|date:"d/m/Y"|default:"Date non précisée" }}</p>
+                <p><strong>Mise en ligne :</strong> {{ extrait.dateMiseEnLigne|date:"d/m/Y"|default:"Date non précisée" }}</p>
                 {% if extrait.duree %}<p><strong>Durée :</strong> {{ extrait.duree|duree }}</p>{% endif %}
             </div>
         </div>

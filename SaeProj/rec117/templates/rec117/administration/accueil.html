@@ -48,7 +48,7 @@
         <div class="admin-tableau-conteneur">
             <table class="admin-tableau">
                 <thead>
-                    <tr><th></th><th>Titre</th><th>Artiste</th><th>Lieu</th><th>Tournage</th><th>Durée</th><th>Extraits</th><th></th></tr>
+                    <tr><th></th><th>Titre</th><th>Artiste</th><th>Lieu</th><th>Tournage</th><th>Mise en ligne</th><th>Durée</th><th>Extraits</th><th></th></tr>
                 </thead>
                 <tbody>
                 {% for interview in interviews %}
@@ -59,6 +59,7 @@
                         <td>{{ interview.artiste.nomArtiste }}</td>
                         <td>{{ interview.lieu.villeLieu|default:"—" }}</td>
                         <td>{{ interview.dateTournage|date:"d/m/Y"|default:"—" }}</td>
+                        <td>{{ interview.dateMiseEnLigne|date:"d/m/Y"|default:"—" }}</td>
                         <td>{{ interview.duree_totale|duree|default:"—" }}</td>
                         <td>{{ interview.extraits.all|length }}</td>
                         <td class="admin-actions">
@@ -69,11 +70,11 @@
 
                     {# Les extraits de l'interview, cachés au départ #}
                     <tr class="admin-extraits" id="extraits-{{ interview.pk }}" hidden>
-                        <td colspan="8">
+                        <td colspan="9">
                             {% if interview.extraits.all %}
                             <table class="admin-tableau admin-tableau--extraits">
                                 <thead>
-                                    <tr><th></th><th>N°</th><th>Titre</th><th>Durée</th><th>Questions</th><th>Vidéo</th><th></th></tr>
+                                    <tr><th></th><th>N°</th><th>Titre</th><th>Mise en ligne</th><th>Durée</th><th>Questions</th><th>Vidéo</th><th></th></tr>
                                 </thead>
                                 <tbody>
                                 {% for extrait in interview.extraits.all %}
@@ -81,6 +82,7 @@
                                         <td><img class="admin-miniature" src="{{ extrait|miniature_de }}" alt="" onerror="this.onerror=null; this.src='data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=='"></td>
                                         <td>{{ extrait.ordreSequence }}</td>
                                         <td class="admin-titre">{{ extrait.titreExtrait }}</td>
+                                        <td>{{ extrait.dateMiseEnLigne|date:"d/m/Y"|default:"—" }}</td>
                                         <td>{{ extrait.duree|duree|default:"—" }}</td>
                                         <td class="admin-question">{% for lien in extrait.timecodes.all %}<span class="admin-timecode">{{ lien.timecode|duree }}</span> {{ lien.question.texteQuestion|truncatechars:50 }}{% if not forloop.last %}<br>{% endif %}{% empty %}—{% endfor %}</td>
                                         <td>{% include 'rec117/administration/plateformes.html' with video=extrait %}</td>

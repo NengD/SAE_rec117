@@ -54,6 +54,7 @@
                 <p><strong>Couleur musicale :</strong><br>{% include 'rec117/partials/genres.html' with artiste=interview.artiste %}</p>
                 <p><strong>Type de contenu :</strong> Interview Intégrale (playlist)</p>
                 <p><strong>Tournage :</strong> {{ interview.dateTournage|date:"d/m/Y"|default:"Date non précisée" }}</p>
+                <p><strong>Mise en ligne :</strong> {{ interview.dateMiseEnLigne|date:"d/m/Y"|default:"Date non précisée" }}</p>
                 {% if interview.duree_totale %}<p><strong>Durée totale :</strong> {{ interview.duree_totale|duree }}</p>{% endif %}
                 <p><strong>Séquences :</strong> {{ interview.extraits.count }} extraits</p>
             </div>
