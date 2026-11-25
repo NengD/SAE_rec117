@@ -37,8 +37,8 @@ class HomeView(TemplateView):
         context['interviews'] = Interview.objects.order_by('idInterview')
         nombre_videos = ConfigurationSite.objects.values_list('nombre_videos_carrousel', flat=True).first()
         nombre_videos = nombre_videos or NB_CONTENUS_RECENTS_PAR_DEFAUT
-        context['derniers_extraits'] = Extrait.objects.order_by('-idExtrait')[:nombre_videos]
-        context['dernieres_interviews'] = Interview.objects.order_by('-idInterview')[:nombre_videos]
+        context['derniers_extraits'] = Extrait.objects.order_by('-dateMiseEnLigne', '-idExtrait')[:nombre_videos]
+        context['dernieres_interviews'] = Interview.objects.order_by('-dateMiseEnLigne', '-idInterview')[:nombre_videos]
 
         # Interview à la une : la dernière ajoutée en base
         context['interview_a_la_une'] = Interview.objects.order_by('idInterview').last()
